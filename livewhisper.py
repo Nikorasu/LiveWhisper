@@ -18,26 +18,27 @@ class StreamHandler:
         self.model = whisper.load_model(f'small{".en" if english else ""}')
         print("\033[90m Done.\033[0m")
 
-    def savebuffer(self, indata):
-        self.buffer = np.concatenate((self.buffer, indata))    
-
     def callback(self, indata, frames, time, status):
         if status: print(status)
         if any(indata):
             if indata.max() > threshold:
                 print('.', end='', flush=True)
+                if self.padding < 1:
+                    self.buffer = self.previousblock.copy()
+                self.buffer = np.concatenate((self.buffer, indata))
                 self.padding = 20
-                self.savebuffer(indata)
             else:
                 self.padding -= 1
                 if self.padding > 1:
-                    self.savebuffer(indata)
+                    self.buffer = np.concatenate((self.buffer, indata))
                 elif self.padding < 1 and 1 < self.buffer.shape[0] > samplerate/2:
                     self.fileready = True
                     write('recording.wav', samplerate, self.buffer)
-                    self.buffer = np.empty((1,1))
+                    self.buffer = np.zeros((1,1))
                 elif self.padding < 1 and 1 < self.buffer.shape[0] < samplerate/2:
                     self.buffer = np.zeros((1,1))
+                else:
+                    self.previousblock = indata.copy()
         else:
             print("\033[31mNo input or device is muted.\033[0m")
             self.running = False
@@ -49,8 +50,7 @@ class StreamHandler:
                 result = self.model.transcribe('recording.wav',language='english')
             else:
                 result = self.model.transcribe('recording.wav') # task='translate'
-            print("\033[1A\x1b[2K", end='', flush=True)
-            print(result['text'])
+            print(f"\033[1A\x1b[2K{result['text']}")
             self.fileready = False
         
     def listen(self):

@@ -12,7 +12,7 @@ class StreamHandler:
     def __init__(self):
         self.running = True
         self.padding = 0
-        self.buffer = np.zeros((1,1))
+        self.prevblock = self.buffer = np.zeros((0,1))
         self.fileready = False
         print("\033[96mLoading Whisper Model..\033[0m", end='', flush=True)
         self.model = whisper.load_model(f'small{".en" if english else ""}')
@@ -24,7 +24,7 @@ class StreamHandler:
             if indata.max() > threshold:
                 print('.', end='', flush=True)
                 if self.padding < 1:
-                    self.buffer = self.previousblock.copy()
+                    self.buffer = self.prevblock.copy()
                 self.buffer = np.concatenate((self.buffer, indata))
                 self.padding = 20
             else:
@@ -34,11 +34,11 @@ class StreamHandler:
                 elif self.padding < 1 and 1 < self.buffer.shape[0] > samplerate/2:
                     self.fileready = True
                     write('recording.wav', samplerate, self.buffer)
-                    self.buffer = np.zeros((1,1))
+                    self.buffer = np.zeros((0,1))
                 elif self.padding < 1 and 1 < self.buffer.shape[0] < samplerate/2:
-                    self.buffer = np.zeros((1,1))
+                    self.buffer = np.zeros((0,1))
                 else:
-                    self.previousblock = indata.copy()
+                    self.prevblock = indata.copy()
         else:
             print("\033[31mNo input or device is muted.\033[0m")
             self.running = False

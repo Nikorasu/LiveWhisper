@@ -6,7 +6,7 @@ import whisper
 english = True
 samplerate = 44100
 blocksize = 30
-threshold = 0.4
+threshold = 0.3
 
 class StreamHandler:
     def __init__(self):
@@ -21,7 +21,8 @@ class StreamHandler:
     def callback(self, indata, frames, time, status):
         if status: print(status)
         if any(indata):
-            if indata.max() > threshold:
+            freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * samplerate / len(indata)
+            if indata.max() > threshold and 60 <= freq <= 800:
                 print('.', end='', flush=True)
                 if self.padding < 1:
                     self.buffer = self.prevblock.copy()
@@ -42,7 +43,7 @@ class StreamHandler:
         else:
             print("\033[31mNo input or device is muted.\033[0m")
             self.running = False
-    
+
     def process(self):
         if self.fileready:
             print("\n\033[90mTranscribing..\033[0m")
@@ -52,7 +53,7 @@ class StreamHandler:
                 result = self.model.transcribe('recording.wav') # task='translate'
             print(f"\033[1A\x1b[2K{result['text']}")
             self.fileready = False
-        
+
     def listen(self):
         print("\033[92mListening.. \033[37m(Ctrl+C to Quit)\033[0m")
         with sd.InputStream(channels=1, callback=self.callback, blocksize=int(samplerate * blocksize / 1000), samplerate=samplerate):

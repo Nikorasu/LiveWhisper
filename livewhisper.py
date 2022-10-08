@@ -3,10 +3,13 @@ import sounddevice as sd
 import numpy as np
 import whisper
 
+model = 'small'
 english = True
+translate = False
 samplerate = 44100
 blocksize = 30
-threshold = 0.3
+threshold = 0.35
+vocals = [60, 800]
 
 class StreamHandler:
     def __init__(self):
@@ -15,14 +18,14 @@ class StreamHandler:
         self.prevblock = self.buffer = np.zeros((0,1))
         self.fileready = False
         print("\033[96mLoading Whisper Model..\033[0m", end='', flush=True)
-        self.model = whisper.load_model(f'small{".en" if english else ""}')
+        self.model = whisper.load_model(f'{model}{".en" if english else ""}')
         print("\033[90m Done.\033[0m")
 
     def callback(self, indata, frames, time, status):
         if status: print(status)
         if any(indata):
             freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * samplerate / len(indata)
-            if indata.max() > threshold and 60 <= freq <= 800:
+            if indata.max() > threshold and vocals[0] <= freq <= vocals[1]:
                 print('.', end='', flush=True)
                 if self.padding < 1:
                     self.buffer = self.prevblock.copy()
@@ -47,10 +50,7 @@ class StreamHandler:
     def process(self):
         if self.fileready:
             print("\n\033[90mTranscribing..\033[0m")
-            if english:
-                result = self.model.transcribe('recording.wav',language='english')
-            else:
-                result = self.model.transcribe('recording.wav') # task='translate'
+            result = self.model.transcribe('recording.wav',language='en' if english else '',task='translate' if translate else 'transcribe')
             print(f"\033[1A\x1b[2K{result['text']}")
             self.fileready = False
 

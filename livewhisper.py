@@ -3,13 +3,13 @@ import sounddevice as sd
 import numpy as np
 import whisper
 
-model = 'small'
-english = True
-translate = False
-samplerate = 44100
-blocksize = 30
-threshold = 0.35
-vocals = [60, 800]
+model = 'small'     # Whisper model size (tiny, base, small, medium, large)
+english = True      # Use english-only model?
+translate = False   # Translate non-english to english?
+samplerate = 44100  # Stream device recording frequency
+blocksize = 30      # Block size in milliseconds
+threshold = 0.35    # Minimum volume threshold to activate listening
+vocals = [60, 800]  # Frequency range to detect sounds that could be speech
 
 class StreamHandler:
     def __init__(self):
@@ -22,9 +22,9 @@ class StreamHandler:
         print("\033[90m Done.\033[0m")
 
     def callback(self, indata, frames, time, status):
-        if status: print(status)
+        #if status: print(status) # for debugging, prints stream errors.
         if any(indata):
-            freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * samplerate / len(indata)
+            freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * samplerate / frames
             if indata.max() > threshold and vocals[0] <= freq <= vocals[1]:
                 print('.', end='', flush=True)
                 if self.padding < 1:
@@ -35,14 +35,14 @@ class StreamHandler:
                 self.padding -= 1
                 if self.padding > 1:
                     self.buffer = np.concatenate((self.buffer, indata))
-                elif self.padding < 1 and 1 < self.buffer.shape[0] > samplerate/2:
+                elif self.padding < 1 and 1 < self.buffer.shape[0] > samplerate*.7:
                     self.fileready = True
-                    write('recording.wav', samplerate, self.buffer)
+                    write('recording.wav', samplerate, self.buffer) # I'd rather send data to Whisper directly..
                     self.buffer = np.zeros((0,1))
-                elif self.padding < 1 and 1 < self.buffer.shape[0] < samplerate/2:
+                elif self.padding < 1 and 1 < self.buffer.shape[0] < samplerate*.7:
                     self.buffer = np.zeros((0,1))
                 else:
-                    self.prevblock = indata.copy()
+                    self.prevblock = indata.copy() #np.concatenate((self.prevblock[-int(samplerate/10):], indata)) # SLOW
         else:
             print("\033[31mNo input or device is muted.\033[0m")
             self.running = False

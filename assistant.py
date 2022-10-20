@@ -1,4 +1,5 @@
 from scipy.io.wavfile import write
+from subprocess import call
 import sounddevice as sd
 import numpy as np
 import whisper
@@ -13,8 +14,20 @@ threshold = 0.3     # Minimum volume threshold to activate listening
 vocals = [60, 800]  # Frequency range to detect sounds that could be speech
 endblocks = 30      # Number of blocks to wait before sending to Whisper
 
-class StreamHandler:
+class Assistant:
     def __init__(self):
+        pass
+
+    def analyze(self, input):
+        if input == ' computer.':
+            self.speak('Yes?')
+    
+    def speak(self, text):
+        call(['espeak', text]) #  '-v', 'en-us',
+
+class StreamHandler:
+    def __init__(self, assist):
+        self.assist = assist
         self.running = True
         self.padding = 0
         self.prevblock = self.buffer = np.zeros((0,1))
@@ -55,6 +68,7 @@ class StreamHandler:
             print("\n\033[90mTranscribing..\033[0m")
             result = self.model.transcribe('recording.wav',language='en' if english else '',task='translate' if translate else 'transcribe')
             print(f"\033[1A\033[2K\033[0G{result['text']}")
+            self.assist.analyze(result['text'])
             self.fileready = False
 
     def listen(self):
@@ -65,7 +79,8 @@ class StreamHandler:
 
 def main():
     try:
-        handler = StreamHandler()
+        AIstant = Assistant()
+        handler = StreamHandler(AIstant)
         handler.listen()
     except (KeyboardInterrupt, SystemExit):
         print("\n\033[93mQuitting..\033[0m")

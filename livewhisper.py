@@ -10,7 +10,7 @@ translate = False   # Translate non-english to english?
 samplerate = 44100  # Stream device recording frequency
 blocksize = 30      # Block size in milliseconds
 threshold = 0.3     # Minimum volume threshold to activate listening
-vocals = [60, 800]  # Frequency range to detect sounds that could be speech
+vocals = [50, 1000] # Frequency range to detect sounds that could be speech
 endblocks = 30      # Number of blocks to wait before sending to Whisper
 
 class StreamHandler:

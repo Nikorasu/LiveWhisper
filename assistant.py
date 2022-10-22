@@ -24,30 +24,34 @@ class Assistant:
         self.prompted = False
         self.espeak = pyttsx3.init()
         self.espeak.setProperty('rate', 180)
+        self.askwiki = False
 
     def analyze(self, input):
         string = "".join(ch for ch in input if ch not in {",",".","?","!","'"})
-        prompt = string.lower().split()
-        if prompt == ["computer"]: #" computer." == input:
+        query = string.lower().split()
+        wikiwords = {"computer","do","a","check","wikipedia","search","for","on","what","whats","who","whos","is","an","does","say","can","you","tell","me","about","of"}
+        if query == ["computer"]:
             self.speak('Yes?')
             self.prompted = True
-        elif (self.prompted or "computer" in prompt) and "wikipedia" in prompt:
-            removewords = {"computer", "do", "a", "check", "wikipedia", "search", "for", "on", "what", "whats", "who", "whos", "is", "an", "does", "say", "tell", "me", "about", "of"}
-            prompt = [word for word in prompt if word not in removewords]
-            try:
-                results = wikipedia.summary(" ".join(prompt), sentences=2)
-                self.speak('According to Wikipedia:')
-                self.speak(results)
-            except wikipedia.exceptions.PageError:
-                self.speak("I couldn't find that. Could you be more specific?")
+        elif self.askwiki or ((self.prompted or "computer" in query) and "wikipedia" in query):
+            query = [word for word in query if word not in wikiwords]
+            if query == [] and not self.askwiki: # if query is empty after removing wikiwords, ask user for search term
+                self.speak("what do you want to search for?")
+                self.askwiki = True
+            elif query == [] and self.askwiki:
+                self.speak("no search term detected, canceling.")
+                self.askwiki = False
+            else:
+                self.getwiki(" ".join(query))
+                self.askwiki = False
             self.prompted = False
-        elif (self.prompted or "computer" in prompt) and "time" in prompt: #any(ele in set for ele in prompt) #{'what','whats','}
+        elif (self.prompted or "computer" in query) and "time" in query: #any(ele in set for ele in query) #{'what','whats','}
             self.speak("The time is " + time.strftime("%I:%M %p"))
             self.prompted = False
-        elif (self.prompted or "computer" in prompt) and "date" in prompt:
+        elif (self.prompted or "computer" in query) and "date" in query:
             self.speak("The date is " + time.strftime("%B %d, %Y"))
             self.prompted = False
-        elif (self.prompted or "computer" in prompt) and "joke" in prompt or "jokes" in prompt or "funny" in prompt:
+        elif (self.prompted or "computer" in query) and "joke" in query or "jokes" in query or "funny" in query:
             joke = requests.get('https://icanhazdadjoke.com', headers={"Accept":"text/plain"})
             self.speak(joke.text)
             self.prompted = False
@@ -58,6 +62,14 @@ class Assistant:
         self.espeak.say(text) #call(['espeak', text]) #  '-v', 'en-us'
         self.espeak.runAndWait()
         self.talking = False
+    
+    def getwiki(self, text):
+        try:
+            results = wikipedia.summary(text, sentences=2)
+            self.speak('According to Wikipedia:')
+            self.speak(results)
+        except (wikipedia.exceptions.PageError, wikipedia.exceptions.WikipediaException):
+            self.speak("I couldn't find that. Could you be more specific?")
 
 class StreamHandler:
     def __init__(self, assist):

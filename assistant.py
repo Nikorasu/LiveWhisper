@@ -30,12 +30,13 @@ class Assistant:
     def analyze(self, input):
         string = "".join(ch for ch in input if ch not in {",",".","?","!","'"}) # Remove punctuation
         query = string.lower().split() # Split into words
-        wikiwords = {"computer","do","a","check","wikipedia","search","for","on","what","whats","who","whos","is","an","does","say","can","you","tell","me","about","of","something"}
-        respond = self.prompted or "computer" in query
+        queried = self.prompted or "computer" in query
         if query == ["computer"]:
             self.speak('Yes?')
             self.prompted = True
-        elif self.askwiki or (respond and "wikipedia" in query):
+        elif self.askwiki or (queried and "wikipedia" in query):
+            wikiwords = {"computer","do","a","check","wikipedia","search","for","on","what","whats","who",
+                        "whos","is","an","does","say","can","you","tell","me","about","of","something"}
             query = [word for word in query if word not in wikiwords] # remake query without wikiwords
             if query == [] and not self.askwiki: # if query is empty after removing wikiwords, ask user for search term
                 self.speak("what do you want to search for?")
@@ -47,18 +48,18 @@ class Assistant:
                 self.getwiki(" ".join(query))
                 self.askwiki = False
             self.prompted = False
-        elif respond and "time" in query: #any(ele in set for ele in query) #{'what','whats','}
+        elif queried and "time" in query: #any(ele in set for ele in query) #{'what','whats','} #old idea
             self.speak("The time is " + time.strftime("%I:%M %p"))
             self.prompted = False
-        elif respond and "date" in query:
+        elif queried and "date" in query:
             day = time.strftime("%e")
             self.speak("Today's date is " + time.strftime(f"%B {day}{self.ordsuf(int(day))} %Y"))
             self.prompted = False
-        elif respond and "day" in query:
+        elif queried and "day" in query:
             day = time.strftime("%e")
             self.speak("It's " + time.strftime(f"%A the {day}{self.ordsuf(int(day))}"))
             self.prompted = False
-        elif respond and "weather" in query:
+        elif queried and "weather" in query:
             curTime = time.time()
             if curTime - self.weatherSave[1] > 300 or self.weatherSave[1] == 0: # if last weather request was more than 5 minutes ago
                 try:
@@ -71,7 +72,7 @@ class Assistant:
                 outcome = self.weatherSave[0]
             self.speak(outcome)
             self.prompted = False
-        elif respond and "joke" in query or "jokes" in query or "funny" in query:
+        elif queried and "joke" in query or "jokes" in query or "funny" in query:
             try:
                 joke = requests.get('https://icanhazdadjoke.com', headers={"Accept":"text/plain"}).text
             except requests.exceptions.ConnectionError:
@@ -82,7 +83,7 @@ class Assistant:
     def speak(self, text):
         self.talking = True
         print(f"\n\033[92m{text}\033[0m\n")
-        self.espeak.say(text) #call(['espeak', text]) #  '-v', 'en-us'
+        self.espeak.say(text) #call(['espeak',text]) #'-v','en-us' #without pytttsx3
         self.espeak.runAndWait()
         self.talking = False
     
@@ -159,4 +160,4 @@ def main():
     if os.path.exists('recording.wav'): os.remove('recording.wav')
 
 if __name__ == '__main__':
-    main()
+    main()  # Nik

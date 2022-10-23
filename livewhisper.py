@@ -29,8 +29,7 @@ class StreamHandler:
             freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * samplerate / frames
             if indata.max() > threshold and vocals[0] <= freq <= vocals[1]:
                 print('.', end='', flush=True)
-                if self.padding < 1:
-                    self.buffer = self.prevblock.copy()
+                if self.padding < 1: self.buffer = self.prevblock.copy()
                 self.buffer = np.concatenate((self.buffer, indata))
                 self.padding = endblocks
             else:

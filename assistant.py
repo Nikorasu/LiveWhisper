@@ -52,11 +52,11 @@ class Assistant:
             self.prompted = False
         elif respond and "date" in query:
             day = time.strftime("%e")
-            self.speak("Today's date is " + time.strftime(f"%B {day}{self.orday(int(day))} %Y"))
+            self.speak("Today's date is " + time.strftime(f"%B {day}{self.ordsuf(int(day))} %Y"))
             self.prompted = False
         elif respond and "day" in query:
             day = time.strftime("%e")
-            self.speak("It's " + time.strftime(f"%A the {day}{self.orday(int(day))}"))
+            self.speak("It's " + time.strftime(f"%A the {day}{self.ordsuf(int(day))}"))
             self.prompted = False
         elif respond and "weather" in query:
             curTime = time.time()
@@ -72,8 +72,11 @@ class Assistant:
             self.speak(outcome)
             self.prompted = False
         elif respond and "joke" in query or "jokes" in query or "funny" in query:
-            joke = requests.get('https://icanhazdadjoke.com', headers={"Accept":"text/plain"})
-            self.speak(joke.text)
+            try:
+                joke = requests.get('https://icanhazdadjoke.com', headers={"Accept":"text/plain"}).text
+            except requests.exceptions.ConnectionError:
+                joke = "I can't think of any jokes right now. Connection Error."
+            self.speak(joke)
             self.prompted = False
     
     def speak(self, text):
@@ -91,8 +94,8 @@ class Assistant:
         except (wikipedia.exceptions.PageError, wikipedia.exceptions.WikipediaException):
             self.speak("I couldn't find that. Could you be more specific?")
 
-    # One-line function to return ordinal suffix for days of the month. 1st, 2nd, 3rd, 4th, etc.
-    def orday(self,day): return ["th","st","nd","rd"][day%10] if day%10 in [1,2,3] and day not in [11,12,13] else "th"
+    # Returns Ordinal Suffix for day of the month: 1st, 2nd, 3rd, 4th, etc.
+    def ordsuf(self,day): return ["th","st","nd","rd"][day%10] if day%10 in [1,2,3] and day not in [11,12,13] else "th"
 
 class StreamHandler:
     def __init__(self, assist):

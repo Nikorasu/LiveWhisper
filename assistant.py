@@ -1,4 +1,5 @@
 from scipy.io.wavfile import write
+from bs4 import BeautifulSoup
 import sounddevice as sd
 import numpy as np
 import wikipedia
@@ -8,15 +9,15 @@ import whisper
 import time
 import os
 
-model = 'small'       # Whisper model size (tiny, base, small, medium, large)
-english = True        # Use english-only model?
-translate = False     # Translate non-english to english?
-samplerate = 44100    # Stream device recording frequency
-blocksize = 30        # Block size in milliseconds
-threshold = 0.25      # Minimum volume threshold to activate listening
-vocals = [50, 1000]   # Frequency range to detect sounds that could be speech
-endblocks = 30        # Number of blocks to wait before sending to Whisper
-location = 'Somonauk' # For weather (wttr.in), uses IP location if not specified
+model = 'small'     # Whisper model size (tiny, base, small, medium, large)
+english = True      # Use english-only model?
+translate = False   # Translate non-english to english?
+samplerate = 44100  # Stream device recording frequency
+blocksize = 30      # Block size in milliseconds
+threshold = 0.25    # Minimum volume threshold to activate listening
+vocals = [50, 1000] # Frequency range to detect sounds that could be speech
+endblocks = 30      # Number of blocks to wait before sending to Whisper
+city = 'Somonauk'   # For weather, uses Google (alt: wttr.in uses IP location if not specified)
 
 class Assistant:
     def __init__(self):
@@ -36,7 +37,7 @@ class Assistant:
             self.prompted = True
         elif self.askwiki or (queried and "wikipedia" in query):
             wikiwords = {"computer","do","a","check","wikipedia","search","for","on","what","whats","who",
-                        "whos","is","an","does","say","can","you","tell","me","about","of","something"}
+                        "whos","is","was","an","does","say","can","you","tell","me","about","of","something"}
             query = [word for word in query if word not in wikiwords] # remake query without wikiwords
             if query == [] and not self.askwiki: # if query is empty after removing wikiwords, ask user for search term
                 self.speak("what do you want to search for?")
@@ -63,8 +64,13 @@ class Assistant:
             curTime = time.time()
             if curTime - self.weatherSave[1] > 300 or self.weatherSave[1] == 0: # if last weather request was more than 5 minutes ago
                 try:
-                    weather = requests.get(f'http://wttr.in/{location}?format=%C+with+a+temperature+of+%t')
-                    outcome = self.weatherSave[0] = f"Current weather in {location} is {weather.text.replace('+','')}."
+                    html = requests.get("https://www.google.com/search?q=weather"+city).content
+                    soup = BeautifulSoup(html, 'html.parser')
+                    temp = soup.find('div', attrs={'class': 'BNeawe iBp4i AP7Wnd'}).text
+                    skyc = soup.find('div', attrs={'class': 'BNeawe tAd8D AP7Wnd'}).text.split('\n')[1]
+                    outcome = self.weatherSave[0] = f'Current weather in {city} is {skyc}, with a temperature of {temp}.'
+                    #weather = requests.get(f'http://wttr.in/{city}?format=%C+with+a+temperature+of+%t') # alternative weather API
+                    #outcome = self.weatherSave[0] = f"Current weather in {city} is {weather.text.replace('+','')}."
                     self.weatherSave[1] = curTime
                 except requests.exceptions.ConnectionError:
                     outcome = "I couldn't connect to the weather service."
@@ -93,7 +99,7 @@ class Assistant:
             self.speak('According to Wikipedia:')
             self.speak(results)
         except (wikipedia.exceptions.PageError, wikipedia.exceptions.WikipediaException):
-            self.speak("I couldn't find that. Could you be more specific?")
+            self.speak("I couldn't find that right now, maybe phrase it differently?")
 
     # Returns Ordinal Suffix for day of the month: 1st, 2nd, 3rd, 4th, etc.
     def ordsuf(self,day): return ["th","st","nd","rd"][day%10] if day%10 in [1,2,3] and day not in [11,12,13] else "th"

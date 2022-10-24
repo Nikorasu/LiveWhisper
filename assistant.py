@@ -24,15 +24,15 @@ class Assistant:
         self.talking = False
         self.prompted = False
         self.espeak = pyttsx3.init()
-        self.espeak.setProperty('rate', 180)
+        self.espeak.setProperty('rate', 180) # speed of speech, 175 is terminal default, 200 is pyttsx3 default
         self.askwiki = False
         self.weatherSave = ['',0]
 
     def analyze(self, input):
-        string = "".join(ch for ch in input if ch not in {",",".","?","!","'"}) # Remove punctuation
+        string = "".join(ch for ch in input if ch not in {",",".","?","!","'"})  # Removes punctuation
         query = string.lower().split() # Split into words
         queried = self.prompted or "computer" in query
-        if query == ["computer"]:
+        if query == ["computer"]:  # If just "computer" is said, prompt for input
             self.speak('Yes?')
             self.prompted = True
         elif self.askwiki or (queried and "wikipedia" in query):
@@ -42,11 +42,11 @@ class Assistant:
             if query == [] and not self.askwiki: # if query is empty after removing wikiwords, ask user for search term
                 self.speak("what do you want to search for?")
                 self.askwiki = True
-            elif query == [] and self.askwiki:
+            elif query == [] and self.askwiki: # if query is still empty, cancel search
                 self.speak("no search term detected, canceling.")
                 self.askwiki = False
             else:
-                self.getwiki(" ".join(query))
+                self.getwiki(" ".join(query)) # search wikipedia for query
                 self.askwiki = False
             self.prompted = False
         elif queried and "time" in query: #any(ele in set for ele in query) #{'what','whats','} #old idea
@@ -130,7 +130,7 @@ class StreamHandler:
                     self.buffer = np.concatenate((self.buffer, indata))
                 elif self.padding < 1 and 1 < self.buffer.shape[0] > samplerate:
                     self.fileready = True
-                    write('recording.wav', samplerate, self.buffer) # I'd rather send data to Whisper directly..
+                    write('dictate.wav', samplerate, self.buffer) # I'd rather send data to Whisper directly..
                     self.buffer = np.zeros((0,1))
                 elif self.padding < 1 and 1 < self.buffer.shape[0] < samplerate:
                     self.buffer = np.zeros((0,1))
@@ -144,7 +144,7 @@ class StreamHandler:
     def process(self):
         if self.fileready:
             print("\n\033[90mTranscribing..\033[0m")
-            result = self.model.transcribe('recording.wav',language='en' if english else '',task='translate' if translate else 'transcribe')
+            result = self.model.transcribe('dictate.wav',language='en' if english else '',task='translate' if translate else 'transcribe')
             print(f"\033[1A\033[2K\033[0G{result['text']}")
             self.assist.analyze(result['text'])
             self.fileready = False
@@ -163,7 +163,7 @@ def main():
     except (KeyboardInterrupt, SystemExit):
         print("\n\033[93mQuitting..\033[0m")
 
-    if os.path.exists('recording.wav'): os.remove('recording.wav')
+    if os.path.exists('dictate.wav'): os.remove('dictate.wav')
 
 if __name__ == '__main__':
     main()  # Nik

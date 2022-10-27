@@ -1,13 +1,20 @@
+#!pyenv/bin/python3
 from scipy.io.wavfile import write
 from bs4 import BeautifulSoup
+from subprocess import call
 import sounddevice as sd
 import numpy as np
+import webbrowser
 import wikipedia
 import requests
 import pyttsx3
 import whisper
 import time
 import os
+
+# This is a voice assistant that can perform simple tasks such as:
+# searching wikipedia, telling the date/time/weather/jokes, and more.
+# ToDo: notepad dictation, schedule events/reminders, open sites/apps.
 
 model = 'small'     # Whisper model size (tiny, base, small, medium, large)
 english = True      # Use english-only model?
@@ -17,10 +24,11 @@ blocksize = 30      # Block size in milliseconds
 threshold = 0.25    # Minimum volume threshold to activate listening
 vocals = [50, 1000] # Frequency range to detect sounds that could be speech
 endblocks = 30      # Number of blocks to wait before sending to Whisper
-city = 'Somonauk'   # For weather, uses Google (alt: wttr.in uses IP location if not specified)
+city = 'Somonauk'   # For weather, Google uses + for spaces. (alt: wttr.in uses IP location if not specified)
 
 class Assistant:
     def __init__(self):
+        self.running = True
         self.talking = False
         self.prompted = False
         self.espeak = pyttsx3.init()
@@ -29,37 +37,12 @@ class Assistant:
         self.weatherSave = ['',0]
 
     def analyze(self, input):
-        string = "".join(ch for ch in input if ch not in {",",".","?","!","'"})  # Removes punctuation
-        query = string.lower().split() # Split into words
+        string = "".join(ch for ch in input if ch not in ",.?!'")  # Removes punctuation
+        query = string.lower().split()  # Split into words
         queried = self.prompted or "computer" in query
-        if query == ["computer"]:  # If just "computer" is said, prompt for input
+        if query in [["computer"],["okay","computer"],["hey","computer"]]:  # Prompt for further input
             self.speak('Yes?')
             self.prompted = True
-        elif self.askwiki or (queried and "wikipedia" in query):
-            wikiwords = {"computer","do","a","check","wikipedia","search","for","on","what","whats","who",
-                        "whos","is","was","an","does","say","can","you","tell","me","about","of","something"}
-            query = [word for word in query if word not in wikiwords] # remake query without wikiwords
-            if query == [] and not self.askwiki: # if query is empty after removing wikiwords, ask user for search term
-                self.speak("what do you want to search for?")
-                self.askwiki = True
-            elif query == [] and self.askwiki: # if query is still empty, cancel search
-                self.speak("no search term detected, canceling.")
-                self.askwiki = False
-            else:
-                self.getwiki(" ".join(query)) # search wikipedia for query
-                self.askwiki = False
-            self.prompted = False
-        elif queried and "time" in query: #any(ele in set for ele in query) #{'what','whats','} #old idea
-            self.speak("The time is " + time.strftime("%I:%M %p"))
-            self.prompted = False
-        elif queried and "date" in query:
-            day = time.strftime("%e")
-            self.speak("Today's date is " + time.strftime(f"%B {day}{self.ordsuf(int(day))} %Y"))
-            self.prompted = False
-        elif queried and "day" in query:
-            day = time.strftime("%e")
-            self.speak("It's " + time.strftime(f"%A the {day}{self.ordsuf(int(day))}"))
-            self.prompted = False
         elif queried and "weather" in query:
             curTime = time.time()
             if curTime - self.weatherSave[1] > 300 or self.weatherSave[1] == 0: # if last weather request was more than 5 minutes ago
@@ -78,6 +61,31 @@ class Assistant:
                 outcome = self.weatherSave[0]
             self.speak(outcome)
             self.prompted = False
+        elif self.askwiki or (queried and "wikipedia" in query):
+            wikiwords = {"computer","do","a","check","wikipedia","search","for","on","what","whats","who",
+                        "whos","is","was","an","does","say","can","you","tell","me","about","of","something"}
+            query = [word for word in query if word not in wikiwords] # remake query without wikiwords
+            if query == [] and not self.askwiki: # if query is empty after removing wikiwords, ask user for search term
+                self.speak("What would you like to know about?")
+                self.askwiki = True
+            elif query == [] and self.askwiki: # if query is still empty, cancel search
+                self.speak("No search term given, canceling.")
+                self.askwiki = False
+            else:
+                self.getwiki(" ".join(query)) # search wikipedia for query
+                self.askwiki = False
+            self.prompted = False
+        elif queried and "time" in query: #any(ele in set for ele in query) #{'what','whats','} #old idea
+            self.speak("The time is " + time.strftime("%I:%M %p"))
+            self.prompted = False
+        elif queried and "date" in query:
+            day = time.strftime("%e")
+            self.speak("Today's date is " + time.strftime(f"%B {day}{self.ordsuf(int(day))} %Y"))
+            self.prompted = False
+        elif queried and "day" in query:
+            day = time.strftime("%e")
+            self.speak("It's " + time.strftime(f"%A the {day}{self.ordsuf(int(day))}"))
+            self.prompted = False
         elif queried and "joke" in query or "jokes" in query or "funny" in query:
             try:
                 joke = requests.get('https://icanhazdadjoke.com', headers={"Accept":"text/plain"}).text
@@ -85,19 +93,24 @@ class Assistant:
                 joke = "I can't think of any jokes right now. Connection Error."
             self.speak(joke)
             self.prompted = False
-    
+        elif queried and "debug" in query and "quit" in query:
+            self.running = False
+            self.speak("Closing Assistant.")
+
     def speak(self, text):
         self.talking = True
         print(f"\n\033[92m{text}\033[0m\n")
         self.espeak.say(text) #call(['espeak',text]) #'-v','en-us' #without pytttsx3
         self.espeak.runAndWait()
         self.talking = False
-    
+
     def getwiki(self, text):
         try:
-            results = wikipedia.summary(text, sentences=2)
+            wikisum = wikipedia.summary(text, sentences=2)
+            wikipage = wikipedia.page(text)
             self.speak('According to Wikipedia:')
-            self.speak(results)
+            call(['notify-send','Wikipedia',wikipage.url]) #with plyer: notification.notify('Wikipedia',wikipage.url,'Assistant')
+            self.speak(wikisum)
         except (wikipedia.exceptions.PageError, wikipedia.exceptions.WikipediaException):
             self.speak("I couldn't find that right now, maybe phrase it differently?")
 
@@ -106,7 +119,7 @@ class Assistant:
 
 class StreamHandler:
     def __init__(self, assist):
-        self.assist = assist
+        self.asst = assist
         self.running = True
         self.padding = 0
         self.prevblock = self.buffer = np.zeros((0,1))
@@ -119,9 +132,9 @@ class StreamHandler:
         #if status: print(status) # for debugging, prints stream errors.
         if any(indata):
             freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * samplerate / frames
-            if indata.max() > threshold and vocals[0] <= freq <= vocals[1] and not self.assist.talking:
+            if indata.max() > threshold and vocals[0] <= freq <= vocals[1] and not self.asst.talking:
                 print('.', end='', flush=True)
-                if self.padding < 1: self.buffer = self.prevblock.copy()
+                if self.padding < 1 : self.buffer = self.prevblock.copy()
                 self.buffer = np.concatenate((self.buffer, indata))
                 self.padding = endblocks
             else:
@@ -146,24 +159,23 @@ class StreamHandler:
             print("\n\033[90mTranscribing..\033[0m")
             result = self.model.transcribe('dictate.wav',language='en' if english else '',task='translate' if translate else 'transcribe')
             print(f"\033[1A\033[2K\033[0G{result['text']}")
-            self.assist.analyze(result['text'])
+            self.asst.analyze(result['text'])
             self.fileready = False
 
     def listen(self):
         print("\033[32mListening.. \033[37m(Ctrl+C to Quit)\033[0m")
         with sd.InputStream(channels=1, callback=self.callback, blocksize=int(samplerate * blocksize / 1000), samplerate=samplerate):
-            while self.running:
-                self.process()
+            while self.running and self.asst.running : self.process()
 
 def main():
     try:
         AIstant = Assistant()
         handler = StreamHandler(AIstant)
         handler.listen()
-    except (KeyboardInterrupt, SystemExit):
+    except (KeyboardInterrupt, SystemExit) : pass
+    finally:
         print("\n\033[93mQuitting..\033[0m")
-
-    if os.path.exists('dictate.wav'): os.remove('dictate.wav')
+        if os.path.exists('dictate.wav') : os.remove('dictate.wav')
 
 if __name__ == '__main__':
     main()  # Nik

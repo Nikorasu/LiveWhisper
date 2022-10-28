@@ -12,10 +12,12 @@ import whisper
 import time
 import os
 
-# This is a voice assistant that can perform simple tasks such as:
+# An AI assistant using Whisper, that can perform simple tasks such as:
 # searching wikipedia, telling the date/time/weather/jokes, and more.
-# ToDo: notepad dictation, schedule events/reminders, open sites/apps.
+# ToDo: notepad dictation, open sites/apps.
 
+AIname = "computer" # Name to call the assistant, such as "computer" or "jarvis". Activates further commands.
+city = 'Somonauk'   # Default city for weather, Google uses + for spaces. (alt: wttr.in uses IP location if not specified)
 model = 'small'     # Whisper model size (tiny, base, small, medium, large)
 english = True      # Use english-only model?
 translate = False   # Translate non-english to english?
@@ -24,7 +26,6 @@ blocksize = 30      # Block size in milliseconds
 threshold = 0.25    # Minimum volume threshold to activate listening
 vocals = [50, 1000] # Frequency range to detect sounds that could be speech
 endblocks = 30      # Number of blocks to wait before sending to Whisper
-city = 'Somonauk'   # For weather, Google uses + for spaces. (alt: wttr.in uses IP location if not specified)
 
 class Assistant:
     def __init__(self):
@@ -39,31 +40,13 @@ class Assistant:
     def analyze(self, input):
         string = "".join(ch for ch in input if ch not in ",.?!'")  # Removes punctuation
         query = string.lower().split()  # Split into words
-        queried = self.prompted or "computer" in query
-        if query in [["computer"],["okay","computer"],["hey","computer"]]:  # Prompt for further input
+        queried = self.prompted or AIname in query
+        if query in [[AIname],["okay",AIname],["hey",AIname]]:  # Prompt for further input
             self.speak('Yes?')
             self.prompted = True
-        elif queried and "weather" in query:
-            curTime = time.time()
-            if curTime - self.weatherSave[1] > 300 or self.weatherSave[1] == 0: # if last weather request was more than 5 minutes ago
-                try:
-                    html = requests.get("https://www.google.com/search?q=weather"+city).content
-                    soup = BeautifulSoup(html, 'html.parser')
-                    temp = soup.find('div', attrs={'class': 'BNeawe iBp4i AP7Wnd'}).text
-                    skyc = soup.find('div', attrs={'class': 'BNeawe tAd8D AP7Wnd'}).text.split('\n')[1]
-                    outcome = self.weatherSave[0] = f'Current weather in {city} is {skyc}, with a temperature of {temp}.'
-                    #weather = requests.get(f'http://wttr.in/{city}?format=%C+with+a+temperature+of+%t') # alternative weather API
-                    #outcome = self.weatherSave[0] = f"Current weather in {city} is {weather.text.replace('+','')}."
-                    self.weatherSave[1] = curTime
-                except requests.exceptions.ConnectionError:
-                    outcome = "I couldn't connect to the weather service."
-            else:
-                outcome = self.weatherSave[0]
-            self.speak(outcome)
-            self.prompted = False
         elif self.askwiki or (queried and "wikipedia" in query):
-            wikiwords = {"computer","do","a","check","wikipedia","search","for","on","what","whats","who",
-                        "whos","is","was","an","does","say","can","you","tell","me","about","of","something"}
+            wikiwords = {AIname,"do","a","check","wikipedia","search","for","on","what","whats","who","whos","is","was","an",
+                        "does","say","can","you","tell","give","get","me","results","info","information","about","something"} #of
             query = [word for word in query if word not in wikiwords] # remake query without wikiwords
             if query == [] and not self.askwiki: # if query is empty after removing wikiwords, ask user for search term
                 self.speak("What would you like to know about?")
@@ -75,7 +58,12 @@ class Assistant:
                 self.getwiki(" ".join(query)) # search wikipedia for query
                 self.askwiki = False
             self.prompted = False
-        elif queried and "time" in query: #any(ele in set for ele in query) #{'what','whats','} #old idea
+        #elif queried and "whats" in query or "what" in query and "is" in query: {'plus','minus','times','divided','by'}
+            #any(ele in set for ele in query) #{'what','whats','} #old idea
+        elif queried and "weather" in query: # get weather for preset {city}. ToDo: allow user to specify city in prompt
+            self.speak(self.getweather())
+            self.prompted = False
+        elif queried and "time" in query: 
             self.speak("The time is " + time.strftime("%I:%M %p"))
             self.prompted = False
         elif queried and "date" in query:
@@ -103,11 +91,27 @@ class Assistant:
         self.espeak.say(text) #call(['espeak',text]) #'-v','en-us' #without pytttsx3
         self.espeak.runAndWait()
         self.talking = False
+    
+    def getweather(self):
+        curTime = time.time()
+        if curTime - self.weatherSave[1] > 300 or self.weatherSave[1] == 0: # if last weather request was over 5 minutes ago
+            try:
+                html = requests.get("https://www.google.com/search?q=weather"+city).content
+                soup = BeautifulSoup(html, 'html.parser')
+                temp = soup.find('div', attrs={'class': 'BNeawe iBp4i AP7Wnd'}).text
+                skyc = soup.find('div', attrs={'class': 'BNeawe tAd8D AP7Wnd'}).text.split('\n')[1]
+                self.weatherSave[0] = f'Current weather in {city} is {skyc}, with a temperature of {temp}.'
+                #weather = requests.get(f'http://wttr.in/{city}?format=%C+with+a+temperature+of+%t') #alternative weather API
+                #outcome = self.weatherSave[0] = f"Current weather in {city} is {weather.text.replace('+','')}."
+                self.weatherSave[1] = curTime
+            except requests.exceptions.ConnectionError:
+                return "I couldn't connect to the weather service."
+        return self.weatherSave[0]
 
     def getwiki(self, text):
         try:
-            wikisum = wikipedia.summary(text, sentences=2)
-            wikipage = wikipedia.page(text)
+            wikisum = wikipedia.summary(text, sentences=2, auto_suggest=False)
+            wikipage = wikipedia.page(text, auto_suggest=False) #auto_suggest=False prevents random results
             self.speak('According to Wikipedia:')
             call(['notify-send','Wikipedia',wikipage.url]) #with plyer: notification.notify('Wikipedia',wikipage.url,'Assistant')
             self.speak(wikisum)

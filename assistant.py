@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 from subprocess import call
 import sounddevice as sd
 import numpy as np
-import webbrowser
+#import webbrowser #wip
 import wikipedia
 import requests
 import pyttsx3
@@ -12,12 +12,13 @@ import whisper
 import time
 import os
 
-# An AI assistant using Whisper, that can perform simple tasks such as:
+# My simple AI assistant using my live Whisper as a base. Can perform simple tasks such as:
 # searching wikipedia, telling the date/time/weather/jokes, and more.
-# ToDo: notepad dictation, open sites/apps.
+# ToDo: dictation xed or similar, dynamically open requested sites/apps, or find simpler way.
+# by Nik Stromberg - nikorasu85@gmail.com - MIT 2022 - copilot
 
 AIname = "computer" # Name to call the assistant, such as "computer" or "jarvis". Activates further commands.
-city = 'Somonauk'   # Default city for weather, Google uses + for spaces. (alt: wttr.in uses IP location if not specified)
+city = 'Chicago'    # Default city for weather, Google uses + for spaces. (alt: wttr.in uses IP location if not specified)
 model = 'small'     # Whisper model size (tiny, base, small, medium, large)
 english = True      # Use english-only model?
 translate = False   # Translate non-english to english?
@@ -58,6 +59,8 @@ class Assistant:
                 self.getwiki(" ".join(query)) # search wikipedia for query
                 self.askwiki = False
             self.prompted = False
+        elif queried and "open" in query and any(word in query for word in ["google","youtube","reddit","facebook","twitter"]):
+            sites = {"google":"google.com","youtube":"youtube.com","reddit":"reddit.com","facebook":"facebook.com","twitter":"twitter.com"}
         #elif queried and "whats" in query or "what" in query and "is" in query: {'plus','minus','times','divided','by'}
             #any(ele in set for ele in query) #{'what','whats','} #old idea
         elif queried and "weather" in query: # get weather for preset {city}. ToDo: allow user to specify city in prompt

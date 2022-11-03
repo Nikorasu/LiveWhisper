@@ -5,6 +5,11 @@ import numpy as np
 import whisper
 import os
 
+# This is my attempt to make psuedo-live transcription of speech using Whisper.
+# Since my system can't use pyaudio, I'm using sounddevice instead.
+# Currently just a basic terminal implementation.
+# by Nik Stromberg - nikorasu85@gmail.com - MIT 2022 - copilot
+
 model = 'small'     # Whisper model size (tiny, base, small, medium, large)
 english = True      # Use english-only model?
 translate = False   # Translate non-english to english?
@@ -72,4 +77,4 @@ def main():
         if os.path.exists('dictate.wav') : os.remove('dictate.wav')
 
 if __name__ == '__main__':
-    main()
+    main()  # by Nik

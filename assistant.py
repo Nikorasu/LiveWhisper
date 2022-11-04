@@ -14,7 +14,7 @@ import os
 
 # My simple AI assistant using my live Whisper as a base. Can perform simple tasks such as:
 # searching wikipedia, telling the date/time/weather/jokes, and more.
-# ToDo: dictation xed or similar, dynamically open requested sites/apps, or find simpler way.
+# ToDo: dictation to xed or similar, dynamically open requested sites/apps, or find simpler way.
 # by Nik Stromberg - nikorasu85@gmail.com - MIT 2022 - copilot
 
 AIname = "computer" # Name to call the assistant, such as "computer" or "jarvis". Activates further commands.
@@ -59,8 +59,8 @@ class Assistant:
                 self.getwiki(" ".join(query)) # search wikipedia for query
                 self.askwiki = False
             self.prompted = False
-        elif queried and "open" in query and any(word in query for word in ["google","youtube","reddit","facebook","twitter"]):
-            sites = {"google":"google.com","youtube":"youtube.com","reddit":"reddit.com","facebook":"facebook.com","twitter":"twitter.com"}
+        #elif queried and "open" in query and any(word in query for word in ["google","youtube","reddit","facebook","twitter"]):
+        #    sites = {"google":"google.com","youtube":"youtube.com","reddit":"reddit.com","facebook":"facebook.com","twitter":"twitter.com"}
         #elif queried and "whats" in query or "what" in query and "is" in query: {'plus','minus','times','divided','by'}
             #any(ele in set for ele in query) #{'what','whats','} #old idea
         elif queried and "weather" in query: # get weather for preset {city}. ToDo: allow user to specify city in prompt
@@ -116,7 +116,9 @@ class Assistant:
             wikisum = wikipedia.summary(text, sentences=2, auto_suggest=False)
             wikipage = wikipedia.page(text, auto_suggest=False) #auto_suggest=False prevents random results
             self.speak('According to Wikipedia:')
-            call(['notify-send','Wikipedia',wikipage.url]) #with plyer: notification.notify('Wikipedia',wikipage.url,'Assistant')
+            try:
+                call(['notify-send','Wikipedia',wikipage.url]) #with plyer: notification.notify('Wikipedia',wikipage.url,'Assistant')
+            except: pass
             self.speak(wikisum)
         except (wikipedia.exceptions.PageError, wikipedia.exceptions.WikipediaException):
             self.speak("I couldn't find that right now, maybe phrase it differently?")
@@ -141,7 +143,7 @@ class StreamHandler:
             freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * samplerate / frames
             if indata.max() > threshold and vocals[0] <= freq <= vocals[1] and not self.asst.talking:
                 print('.', end='', flush=True)
-                if self.padding < 1 : self.buffer = self.prevblock.copy()
+                if self.padding < 1: self.buffer = self.prevblock.copy()
                 self.buffer = np.concatenate((self.buffer, indata))
                 self.padding = endblocks
             else:
@@ -172,17 +174,17 @@ class StreamHandler:
     def listen(self):
         print("\033[32mListening.. \033[37m(Ctrl+C to Quit)\033[0m")
         with sd.InputStream(channels=1, callback=self.callback, blocksize=int(samplerate * blocksize / 1000), samplerate=samplerate):
-            while self.running and self.asst.running : self.process()
+            while self.running and self.asst.running: self.process()
 
 def main():
     try:
         AIstant = Assistant()
         handler = StreamHandler(AIstant)
         handler.listen()
-    except (KeyboardInterrupt, SystemExit) : pass
+    except (KeyboardInterrupt, SystemExit): pass
     finally:
         print("\n\033[93mQuitting..\033[0m")
-        if os.path.exists('dictate.wav') : os.remove('dictate.wav')
+        if os.path.exists('dictate.wav'): os.remove('dictate.wav')
 
 if __name__ == '__main__':
-    main()  # Nik
+    main()  # by Nik

@@ -35,7 +35,7 @@ class StreamHandler:
             freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * samplerate / frames
             if indata.max() > threshold and vocals[0] <= freq <= vocals[1]:
                 print('.', end='', flush=True)
-                if self.padding < 1 : self.buffer = self.prevblock.copy()
+                if self.padding < 1: self.buffer = self.prevblock.copy()
                 self.buffer = np.concatenate((self.buffer, indata))
                 self.padding = endblocks
             else:
@@ -65,16 +65,16 @@ class StreamHandler:
     def listen(self):
         print("\033[92mListening.. \033[37m(Ctrl+C to Quit)\033[0m")
         with sd.InputStream(channels=1, callback=self.callback, blocksize=int(samplerate * blocksize / 1000), samplerate=samplerate):
-            while self.running : self.process()
+            while self.running: self.process()
 
 def main():
     try:
         handler = StreamHandler()
         handler.listen()
-    except (KeyboardInterrupt, SystemExit) : pass
+    except (KeyboardInterrupt, SystemExit): pass
     finally:
         print("\n\033[93mQuitting..\033[0m")
-        if os.path.exists('dictate.wav') : os.remove('dictate.wav')
+        if os.path.exists('dictate.wav'): os.remove('dictate.wav')
 
 if __name__ == '__main__':
     main()  # by Nik

@@ -12,7 +12,7 @@ import whisper
 import time
 import os
 
-# My simple AI assistant using my live Whisper as a base. Can perform simple tasks such as:
+# My simple AI assistant using my LiveWhisper as a base. Can perform simple tasks such as:
 # searching wikipedia, telling the date/time/weather/jokes, and more.
 # ToDo: dictation to xed or similar, dynamically open requested sites/apps, or find simpler way.
 # by Nik Stromberg - nikorasu85@gmail.com - MIT 2022 - copilot
@@ -42,7 +42,7 @@ class Assistant:
         string = "".join(ch for ch in input if ch not in ",.?!'")  # Removes punctuation
         query = string.lower().split()  # Split into words
         queried = self.prompted or AIname in query
-        if query in [[AIname],["okay",AIname],["hey",AIname]]:  # Prompt for further input
+        if query in [[AIname],["okay",AIname],["hey",AIname]]: # Prompt for further input (could use string.startswith(list))
             self.speak('Yes?')
             self.prompted = True
         elif self.askwiki or (queried and "wikipedia" in query):
@@ -66,7 +66,7 @@ class Assistant:
         elif queried and "weather" in query: # get weather for preset {city}. ToDo: allow user to specify city in prompt
             self.speak(self.getweather())
             self.prompted = False
-        elif queried and "time" in query: 
+        elif queried and "time" in query:
             self.speak("The time is " + time.strftime("%I:%M %p"))
             self.prompted = False
         elif queried and "date" in query:
@@ -94,7 +94,7 @@ class Assistant:
         self.espeak.say(text) #call(['espeak',text]) #'-v','en-us' #without pytttsx3
         self.espeak.runAndWait()
         self.talking = False
-    
+
     def getweather(self):
         curTime = time.time()
         if curTime - self.weatherSave[1] > 300 or self.weatherSave[1] == 0: # if last weather request was over 5 minutes ago

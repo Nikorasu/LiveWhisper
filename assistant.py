@@ -67,15 +67,13 @@ class Assistant:
             self.speak(self.getweather())
             self.prompted = False
         elif queried and "time" in query:
-            self.speak("The time is " + time.strftime("%I:%M %p"))
+            self.speak(time.strftime("The time is %-I:%M %p."))
             self.prompted = False
         elif queried and "date" in query:
-            day = time.strftime("%e")
-            self.speak("Today's date is " + time.strftime(f"%B {day}{self.ordsuf(int(day))} %Y"))
+            self.speak(time.strftime(f"Today's date is %B {self.orday()} %Y."))
             self.prompted = False
-        elif queried and "day" in query:
-            day = time.strftime("%e")
-            self.speak("It's " + time.strftime(f"%A the {day}{self.ordsuf(int(day))}"))
+        elif queried and ("day" in query or "today" in query) and ("what" in query or "whats" in query):
+            self.speak(time.strftime(f"It's %A the {self.orday()}."))
             self.prompted = False
         elif queried and "joke" in query or "jokes" in query or "funny" in query:
             try:
@@ -102,6 +100,7 @@ class Assistant:
                 html = requests.get("https://www.google.com/search?q=weather"+city).content
                 soup = BeautifulSoup(html, 'html.parser')
                 temp = soup.find('div', attrs={'class': 'BNeawe iBp4i AP7Wnd'}).text
+                temp += 'ahrenheit' if temp[-1] == 'F' else 'elcius'
                 skyc = soup.find('div', attrs={'class': 'BNeawe tAd8D AP7Wnd'}).text.split('\n')[1]
                 self.weatherSave[0] = f'Current weather in {city} is {skyc}, with a temperature of {temp}.'
                 #weather = requests.get(f'http://wttr.in/{city}?format=%C+with+a+temperature+of+%t') #alternative weather API
@@ -123,8 +122,9 @@ class Assistant:
         except (wikipedia.exceptions.PageError, wikipedia.exceptions.WikipediaException):
             self.speak("I couldn't find that right now, maybe phrase it differently?")
 
-    # Returns Ordinal Suffix for day of the month: 1st, 2nd, 3rd, 4th, etc.
-    def ordsuf(self,day): return ["th","st","nd","rd"][day%10] if day%10 in [1,2,3] and day not in [11,12,13] else "th"
+    def orday(self) -> str:  # Returns day of the month with Ordinal suffix: 1st, 2nd, 3rd, 4th, etc.
+        day = time.strftime("%-d")
+        return day+['','st','nd','rd'][int(day)%10] if int(day)%10 in [1,2,3] and day not in ['11','12','13'] else day+'th'
 
 class StreamHandler:
     def __init__(self, assist):

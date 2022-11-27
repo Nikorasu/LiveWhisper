@@ -26,7 +26,7 @@ samplerate = 44100  # Stream device recording frequency
 blocksize = 30      # Block size in milliseconds
 threshold = 0.2     # Minimum volume threshold to activate listening
 vocals = [50, 1000] # Frequency range to detect sounds that could be speech
-endblocks = 30      # Number of blocks to wait before sending to Whisper
+endblocks = 40      # Number of blocks to wait before sending to Whisper
 
 class Assistant:
     def __init__(self):
@@ -81,7 +81,7 @@ class Assistant:
                 joke = "I can't think of any jokes right now. Connection Error."
             self.speak(joke)
             self.prompted = False
-        elif queried and "debug" in query and "quit" in query:
+        elif queried and "close" in query and "assistant" in query: # used to be 'debug quit'
             self.running = False
             self.speak("Closing Assistant.")
         elif queried and len(query) > 2:
@@ -108,7 +108,7 @@ class Assistant:
                 temp += 'ahrenheit' if temp[-1] == 'F' else 'elcius'
                 self.weatherSave[0] = f'Current weather in {loc} is {skyc}, with a temperature of {temp}.'
                 #weather = requests.get(f'http://wttr.in/{city}?format=%C+with+a+temperature+of+%t') #alternative weather API
-                #outcome = self.weatherSave[0] = f"Current weather in {city} is {weather.text.replace('+','')}."
+                #self.weatherSave[0] = f"Current weather in {city} is {weather.text.replace('+','')}."
                 self.weatherSave[1] = curTime
             except requests.exceptions.ConnectionError:
                 return "I couldn't connect to the weather service."
@@ -162,11 +162,11 @@ class StreamHandler:
                 self.padding -= 1
                 if self.padding > 1:
                     self.buffer = np.concatenate((self.buffer, indata))
-                elif self.padding < 1 and 1 < self.buffer.shape[0] > samplerate:
+                elif self.padding < 1 < self.buffer.shape[0] > samplerate:
                     self.fileready = True
                     write('dictate.wav', samplerate, self.buffer) # I'd rather send data to Whisper directly..
                     self.buffer = np.zeros((0,1))
-                elif self.padding < 1 and 1 < self.buffer.shape[0] < samplerate:
+                elif self.padding < 1 < self.buffer.shape[0] < samplerate:
                     self.buffer = np.zeros((0,1))
                     print("\033[2K\033[0G", end='', flush=True)
                 else:

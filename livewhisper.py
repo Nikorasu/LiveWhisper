@@ -17,7 +17,7 @@ samplerate = 44100  # Stream device recording frequency
 blocksize = 30      # Block size in milliseconds
 threshold = 0.2     # Minimum volume threshold to activate listening
 vocals = [50, 1000] # Frequency range to detect sounds that could be speech
-endblocks = 30      # Number of blocks to wait before sending to Whisper
+endblocks = 35      # Number of blocks to wait before sending to Whisper
 
 class StreamHandler:
     def __init__(self):
@@ -42,11 +42,11 @@ class StreamHandler:
                 self.padding -= 1
                 if self.padding > 1:
                     self.buffer = np.concatenate((self.buffer, indata))
-                elif self.padding < 1 and 1 < self.buffer.shape[0] > samplerate:
+                elif self.padding < 1 < self.buffer.shape[0] > samplerate:
                     self.fileready = True
                     write('dictate.wav', samplerate, self.buffer) # I'd rather send data to Whisper directly..
                     self.buffer = np.zeros((0,1))
-                elif self.padding < 1 and 1 < self.buffer.shape[0] < samplerate:
+                elif self.padding < 1 < self.buffer.shape[0] < samplerate:
                     self.buffer = np.zeros((0,1))
                     print("\033[2K\033[0G", end='', flush=True)
                 else:

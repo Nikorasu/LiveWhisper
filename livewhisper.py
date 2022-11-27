@@ -15,7 +15,7 @@ english = True      # Use english-only model?
 translate = False   # Translate non-english to english?
 samplerate = 44100  # Stream device recording frequency
 blocksize = 30      # Block size in milliseconds
-threshold = 0.25    # Minimum volume threshold to activate listening
+threshold = 0.2     # Minimum volume threshold to activate listening
 vocals = [50, 1000] # Frequency range to detect sounds that could be speech
 endblocks = 30      # Number of blocks to wait before sending to Whisper
 
@@ -58,7 +58,7 @@ class StreamHandler:
     def process(self):
         if self.fileready:
             print("\n\033[90mTranscribing..\033[0m")
-            result = self.model.transcribe('dictate.wav',language='en' if english else '',task='translate' if translate else 'transcribe')
+            result = self.model.transcribe('dictate.wav',fp16=False,language='en' if english else '',task='translate' if translate else 'transcribe')
             print(f"\033[1A\033[2K\033[0G{result['text']}")
             self.fileready = False
 

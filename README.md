@@ -28,4 +28,4 @@ Available features: Weather, date & time, tell jokes, & do wikipedia searches.
 It can also handle some other requests, like basic math or real simple trivia.
 Tho that relies on Google's instant-answer snippets & sometimes doesn't work.
 
-Close Assistant with voice command "computer close assistant", or `ctrl+c`.
+You can close the assistant via `ctrl+c`, or by saying it's name & "terminate".

@@ -18,15 +18,15 @@ import os
 # by Nik Stromberg - nikorasu85@gmail.com - MIT 2022 - copilot
 
 AIname = "computer" # Name to call the assistant, such as "computer" or "jarvis". Activates further commands.
-city = ''           # Default city for weather, Google uses + for spaces. (uses IP location if not specified)
-model = 'small'     # Whisper model size (tiny, base, small, medium, large)
-english = True      # Use english-only model?
-translate = False   # Translate non-english to english?
-samplerate = 44100  # Stream device recording frequency
-blocksize = 30      # Block size in milliseconds
-threshold = 0.2     # Minimum volume threshold to activate listening
-vocals = [50, 1000] # Frequency range to detect sounds that could be speech
-endblocks = 40      # Number of blocks to wait before sending to Whisper
+City = ''           # Default city for weather, Google uses + for spaces. (uses IP location if not specified)
+Model = 'small'     # Whisper model size (tiny, base, small, medium, large)
+English = True      # Use english-only model?
+Translate = False   # Translate non-english to english?
+SampleRate = 44100  # Stream device recording frequency
+BlockSize = 30      # Block size in milliseconds
+Threshold = 0.2     # Minimum volume threshold to activate listening
+Vocals = [50, 1000] # Frequency range to detect sounds that could be speech
+EndBlocks = 40      # Number of blocks to wait before sending to Whisper
 
 class Assistant:
     def __init__(self):
@@ -46,7 +46,7 @@ class Assistant:
         if query in ([AIname],["okay",AIname],["hey",AIname]): # if that's all they said, prompt for more input
             self.speak('Yes?')
             self.prompted = True
-        elif self.askwiki or (queried and "wikipedia" in query):
+        elif self.askwiki or (queried and "wikipedia" in query or "wiki" in query):
             wikiwords = {"okay","hey",AIname,"do","a","check","wikipedia","search","for","on","what","whats","who","whos","is","was",
                         "an","does","say","can","you","tell","give","get","me","results","info","information","about","something"} #of
             query = [word for word in query if word not in wikiwords] # remake query without wikiwords
@@ -62,7 +62,7 @@ class Assistant:
             self.prompted = False
         #elif queried and "open" in query and any(word in query for word in {"google","youtube","reddit","facebook","twitter"}):
         #    sites = {"google":"google.com","youtube":"youtube.com","reddit":"reddit.com","facebook":"facebook.com","twitter":"twitter.com"}
-        elif queried and "weather" in query: # get weather for preset {city}. ToDo: allow user to specify city in prompt
+        elif queried and "weather" in query: # get weather for preset {City}. ToDo: allow user to specify city in prompt
             self.speak(self.getweather())
             self.prompted = False
         elif queried and "time" in query:
@@ -81,7 +81,7 @@ class Assistant:
                 joke = "I can't think of any jokes right now. Connection Error."
             self.speak(joke)
             self.prompted = False
-        elif queried and "close" in query and "assistant" in query: # used to be 'debug quit'
+        elif queried and "terminate" in query: # still deciding on best phrase to close the assistant
             self.running = False
             self.speak("Closing Assistant.")
         elif queried and len(query) > 2:
@@ -100,15 +100,15 @@ class Assistant:
         curTime = time.time()
         if curTime - self.weatherSave[1] > 300 or self.weatherSave[1] == 0: # if last weather request was over 5 minutes ago
             try:
-                html = requests.get("https://www.google.com/search?q=weather"+city, {'User-Agent':self.ua}).content
+                html = requests.get("https://www.google.com/search?q=weather"+City, {'User-Agent':self.ua}).content
                 soup = BeautifulSoup(html, 'html.parser')
                 loc = soup.find("span",attrs={"class":"BNeawe tAd8D AP7Wnd"}).text.split(',')[0]
                 skyc = soup.find('div', attrs={'class':'BNeawe tAd8D AP7Wnd'}).text.split('\n')[1]
                 temp = soup.find('div', attrs={'class':'BNeawe iBp4i AP7Wnd'}).text
                 temp += 'ahrenheit' if temp[-1] == 'F' else 'elcius'
                 self.weatherSave[0] = f'Current weather in {loc} is {skyc}, with a temperature of {temp}.'
-                #weather = requests.get(f'http://wttr.in/{city}?format=%C+with+a+temperature+of+%t') #alternative weather API
-                #self.weatherSave[0] = f"Current weather in {city} is {weather.text.replace('+','')}."
+                #weather = requests.get(f'http://wttr.in/{City}?format=%C+with+a+temperature+of+%t') #alternative weather API
+                #self.weatherSave[0] = f"Current weather in {City} is {weather.text.replace('+','')}."
                 self.weatherSave[1] = curTime
             except requests.exceptions.ConnectionError:
                 return "I couldn't connect to the weather service."
@@ -146,31 +146,31 @@ class StreamHandler:
         self.prevblock = self.buffer = np.zeros((0,1))
         self.fileready = False
         print("\033[96mLoading Whisper Model..\033[0m", end='', flush=True)
-        self.model = whisper.load_model(f'{model}{".en" if english else ""}')
+        self.model = whisper.load_model(f'{Model}{".en" if English else ""}')
         print("\033[90m Done.\033[0m")
 
     def callback(self, indata, frames, time, status):
         #if status: print(status) # for debugging, prints stream errors.
         if any(indata):
-            freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * samplerate / frames
-            if indata.max() > threshold and vocals[0] <= freq <= vocals[1] and not self.asst.talking:
+            freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * SampleRate / frames
+            if indata.max() > Threshold and Vocals[0] <= freq <= Vocals[1] and not self.asst.talking:
                 print('.', end='', flush=True)
                 if self.padding < 1: self.buffer = self.prevblock.copy()
                 self.buffer = np.concatenate((self.buffer, indata))
-                self.padding = endblocks
+                self.padding = EndBlocks
             else:
                 self.padding -= 1
                 if self.padding > 1:
                     self.buffer = np.concatenate((self.buffer, indata))
-                elif self.padding < 1 < self.buffer.shape[0] > samplerate:
+                elif self.padding < 1 < self.buffer.shape[0] > SampleRate:
                     self.fileready = True
-                    write('dictate.wav', samplerate, self.buffer) # I'd rather send data to Whisper directly..
+                    write('dictate.wav', SampleRate, self.buffer) # I'd rather send data to Whisper directly..
                     self.buffer = np.zeros((0,1))
-                elif self.padding < 1 < self.buffer.shape[0] < samplerate:
+                elif self.padding < 1 < self.buffer.shape[0] < SampleRate:
                     self.buffer = np.zeros((0,1))
                     print("\033[2K\033[0G", end='', flush=True)
                 else:
-                    self.prevblock = indata.copy() #np.concatenate((self.prevblock[-int(samplerate/10):], indata)) # SLOW
+                    self.prevblock = indata.copy() #np.concatenate((self.prevblock[-int(SampleRate/10):], indata)) # SLOW
         else:
             print("\033[31mNo input or device is muted.\033[0m")
             self.running = False
@@ -178,14 +178,14 @@ class StreamHandler:
     def process(self):
         if self.fileready:
             print("\n\033[90mTranscribing..\033[0m")
-            result = self.model.transcribe('dictate.wav',fp16=False,language='en' if english else '',task='translate' if translate else 'transcribe')
+            result = self.model.transcribe('dictate.wav',fp16=False,language='en' if English else '',task='translate' if Translate else 'transcribe')
             print(f"\033[1A\033[2K\033[0G{result['text']}")
             self.asst.analyze(result['text'])
             self.fileready = False
 
     def listen(self):
         print("\033[32mListening.. \033[37m(Ctrl+C to Quit)\033[0m")
-        with sd.InputStream(channels=1, callback=self.callback, blocksize=int(samplerate * blocksize / 1000), samplerate=samplerate):
+        with sd.InputStream(channels=1, callback=self.callback, blocksize=int(SampleRate * BlockSize / 1000), samplerate=SampleRate):
             while self.running and self.asst.running: self.process()
 
 def main():

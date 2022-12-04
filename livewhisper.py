@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import whisper, os
+import numpy as np
+import sounddevice as sd
+from scipy.io.wavfile import write
 
 # This is my attempt to make psuedo-live transcription of speech using Whisper.
 # Since my system can't use pyaudio, I'm using sounddevice instead.
@@ -14,14 +18,12 @@ Threshold = 0.2     # Minimum volume threshold to activate listening
 Vocals = [50, 1000] # Frequency range to detect sounds that could be speech
 EndBlocks = 35      # Number of blocks to wait before sending to Whisper
 
-import os
-import whisper
-import numpy as np
-import sounddevice as sd
-from scipy.io.wavfile import write
-
 class StreamHandler:
-    def __init__(self):
+    def __init__(self, assist=None):
+        if assist == None:
+            class fakeAsst(): running, talking, analyze = True, False, None
+            self.asst = fakeAsst()
+        else: self.asst = assist
         self.running = True
         self.padding = 0
         self.prevblock = self.buffer = np.zeros((0,1))
@@ -34,7 +36,7 @@ class StreamHandler:
         #if status: print(status) # for debugging, prints stream errors.
         if any(indata):
             freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * SampleRate / frames
-            if indata.max() > Threshold and Vocals[0] <= freq <= Vocals[1]:
+            if indata.max() > Threshold and Vocals[0] <= freq <= Vocals[1] and not self.asst.talking:
                 print('.', end='', flush=True)
                 if self.padding < 1: self.buffer = self.prevblock.copy()
                 self.buffer = np.concatenate((self.buffer, indata))
@@ -61,12 +63,13 @@ class StreamHandler:
             print("\n\033[90mTranscribing..\033[0m")
             result = self.model.transcribe('dictate.wav',fp16=False,language='en' if English else '',task='translate' if Translate else 'transcribe')
             print(f"\033[1A\033[2K\033[0G{result['text']}")
+            if self.asst.analyze != None: self.asst.analyze(result['text'])
             self.fileready = False
 
     def listen(self):
-        print("\033[92mListening.. \033[37m(Ctrl+C to Quit)\033[0m")
+        print("\033[32mListening.. \033[37m(Ctrl+C to Quit)\033[0m")
         with sd.InputStream(channels=1, callback=self.callback, blocksize=int(SampleRate * BlockSize / 1000), samplerate=SampleRate):
-            while self.running: self.process()
+            while self.running and self.asst.running: self.process()
 
 def main():
     try:

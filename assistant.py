@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+from livewhisper import StreamHandler
+from bs4 import BeautifulSoup
+from subprocess import call
+import wikipedia, requests
+import pyttsx3#, mediactl
+import time, os
+#import webbrowser #wip tbd
 
 # My simple AI assistant using my LiveWhisper as a base. Can perform simple tasks such as:
 # searching wikipedia, telling the date/time/weather/jokes, basic math and trivia, and more.
@@ -15,16 +22,6 @@ BlockSize = 30      # Block size in milliseconds
 Threshold = 0.2     # Minimum volume threshold to activate listening
 Vocals = [50, 1000] # Frequency range to detect sounds that could be speech
 EndBlocks = 40      # Number of blocks to wait before sending to Whisper
-
-import time, os
-import numpy as np
-#import webbrowser #wip tbd
-import pyttsx3, whisper
-import sounddevice as sd
-import wikipedia, requests
-from subprocess import call
-from bs4 import BeautifulSoup
-from scipy.io.wavfile import write
 
 class Assistant:
     def __init__(self):
@@ -135,56 +132,6 @@ class Assistant:
     def orday(self) -> str:  # Returns day of the month with Ordinal suffix: 1st, 2nd, 3rd, 4th, etc.
         day = time.strftime("%-d")
         return day+['','st','nd','rd'][int(day)%10] if int(day)%10 in [1,2,3] and day not in ['11','12','13'] else day+'th'
-
-class StreamHandler:
-    def __init__(self, assist):
-        self.asst = assist
-        self.running = True
-        self.padding = 0
-        self.prevblock = self.buffer = np.zeros((0,1))
-        self.fileready = False
-        print("\033[96mLoading Whisper Model..\033[0m", end='', flush=True)
-        self.model = whisper.load_model(f'{Model}{".en" if English else ""}')
-        print("\033[90m Done.\033[0m")
-
-    def callback(self, indata, frames, time, status):
-        #if status: print(status) # for debugging, prints stream errors.
-        if any(indata):
-            freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * SampleRate / frames
-            if indata.max() > Threshold and Vocals[0] <= freq <= Vocals[1] and not self.asst.talking:
-                print('.', end='', flush=True)
-                if self.padding < 1: self.buffer = self.prevblock.copy()
-                self.buffer = np.concatenate((self.buffer, indata))
-                self.padding = EndBlocks
-            else:
-                self.padding -= 1
-                if self.padding > 1:
-                    self.buffer = np.concatenate((self.buffer, indata))
-                elif self.padding < 1 < self.buffer.shape[0] > SampleRate:
-                    self.fileready = True
-                    write('dictate.wav', SampleRate, self.buffer) # I'd rather send data to Whisper directly..
-                    self.buffer = np.zeros((0,1))
-                elif self.padding < 1 < self.buffer.shape[0] < SampleRate:
-                    self.buffer = np.zeros((0,1))
-                    print("\033[2K\033[0G", end='', flush=True)
-                else:
-                    self.prevblock = indata.copy() #np.concatenate((self.prevblock[-int(SampleRate/10):], indata)) # SLOW
-        else:
-            print("\033[31mNo input or device is muted.\033[0m")
-            self.running = False
-
-    def process(self):
-        if self.fileready:
-            print("\n\033[90mTranscribing..\033[0m")
-            result = self.model.transcribe('dictate.wav',fp16=False,language='en' if English else '',task='translate' if Translate else 'transcribe')
-            print(f"\033[1A\033[2K\033[0G{result['text']}")
-            self.asst.analyze(result['text'])
-            self.fileready = False
-
-    def listen(self):
-        print("\033[32mListening.. \033[37m(Ctrl+C to Quit)\033[0m")
-        with sd.InputStream(channels=1, callback=self.callback, blocksize=int(SampleRate * BlockSize / 1000), samplerate=SampleRate):
-            while self.running and self.asst.running: self.process()
 
 def main():
     try:

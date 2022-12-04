@@ -1,9 +1,4 @@
-#!pyenv/bin/python3
-from scipy.io.wavfile import write
-import sounddevice as sd
-import numpy as np
-import whisper
-import os
+#!/usr/bin/env python3
 
 # This is my attempt to make psuedo-live transcription of speech using Whisper.
 # Since my system can't use pyaudio, I'm using sounddevice instead.
@@ -18,6 +13,12 @@ BlockSize = 30      # Block size in milliseconds
 Threshold = 0.2     # Minimum volume threshold to activate listening
 Vocals = [50, 1000] # Frequency range to detect sounds that could be speech
 EndBlocks = 35      # Number of blocks to wait before sending to Whisper
+
+import os
+import whisper
+import numpy as np
+import sounddevice as sd
+from scipy.io.wavfile import write
 
 class StreamHandler:
     def __init__(self):

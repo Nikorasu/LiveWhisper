@@ -1,16 +1,4 @@
-#!pyenv/bin/python3
-from scipy.io.wavfile import write
-from bs4 import BeautifulSoup
-from subprocess import call
-import sounddevice as sd
-import numpy as np
-#import webbrowser #wip
-import wikipedia
-import requests
-import pyttsx3
-import whisper
-import time
-import os
+#!/usr/bin/env python3
 
 # My simple AI assistant using my LiveWhisper as a base. Can perform simple tasks such as:
 # searching wikipedia, telling the date/time/weather/jokes, basic math and trivia, and more.
@@ -27,6 +15,16 @@ BlockSize = 30      # Block size in milliseconds
 Threshold = 0.2     # Minimum volume threshold to activate listening
 Vocals = [50, 1000] # Frequency range to detect sounds that could be speech
 EndBlocks = 40      # Number of blocks to wait before sending to Whisper
+
+import time, os
+import numpy as np
+#import webbrowser #wip tbd
+import pyttsx3, whisper
+import sounddevice as sd
+import wikipedia, requests
+from subprocess import call
+from bs4 import BeautifulSoup
+from scipy.io.wavfile import write
 
 class Assistant:
     def __init__(self):

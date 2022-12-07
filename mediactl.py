@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# The following are basic functions for controlling available media players on the system, using dbus.
+# The following are basic functions for controlling available media players on a linux system, using dbus.
 # Intended for use with only one media player running, tho works with multiple just without separate controls.
 # If dbus error, try setting include-system-site-packages = true in virtual environment's pyvenv.cfg file.
 # by Nik Stromberg - nikorasu85@gmail.com - MIT 2022 - copilot
@@ -10,9 +10,11 @@ from dbus import SessionBus, Interface
 bus = SessionBus()
 
 def _playerlist() -> list:
+    """Returns a list of all available media player services."""
     return [service for service in bus.list_names() if service.startswith('org.mpris.MediaPlayer2.')]
 
 def playpause() -> bool:
+    """Toggles play/pause for all available media players, returns True if any work."""
     players = _playerlist()
     worked = len(players)
     for player in players:
@@ -24,6 +26,7 @@ def playpause() -> bool:
     return True if worked else False
 
 def next() -> bool:
+    """Go to next track for all available media players, returns True if any work."""
     players = _playerlist()
     worked = len(players)
     for player in players:
@@ -35,6 +38,7 @@ def next() -> bool:
     return True if worked else False
 
 def prev() -> bool:
+    """Go to previous track for all available media players, returns True if any work."""
     players = _playerlist()
     worked = len(players)
     for player in players:
@@ -46,6 +50,7 @@ def prev() -> bool:
     return True if worked else False
 
 def stop() -> bool:
+    """Stop playback for all available media players, returns True if any work."""
     players = _playerlist()
     worked = len(players)
     for player in players:
@@ -57,6 +62,7 @@ def stop() -> bool:
     return True if worked else False
 
 def volumeup() -> bool:
+    """Increase volume for all available media players, returns True if any work."""
     players = _playerlist()
     worked = len(players)
     for player in players:
@@ -70,6 +76,7 @@ def volumeup() -> bool:
     return True if worked else False
 
 def volumedown() -> bool:
+    """Decrease volume for all available media players, returns True if any work."""
     players = _playerlist()
     worked = len(players)
     for player in players:
@@ -83,6 +90,7 @@ def volumedown() -> bool:
     return True if worked else False
 
 def getstatus() -> list:
+    """Returns list of dicts containing title, artist, & status for each media player."""
     players = _playerlist()
     details = []
     for player in players:

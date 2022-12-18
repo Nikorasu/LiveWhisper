@@ -38,3 +38,5 @@ You can close the assistant via `ctrl+c`, or by saying it's name & "terminate".
 
 If you like my projects and want to help me keep making more,
 please consider donating on [my Ko-fi page](https://ko-fi.com/nik85)! Thanks!
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/F1F4GRRWB)

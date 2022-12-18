@@ -6,7 +6,7 @@ from scipy.io.wavfile import write
 
 # This is my attempt to make psuedo-live transcription of speech using Whisper.
 # Since my system can't use pyaudio, I'm using sounddevice instead.
-# Currently just a basic terminal implementation.
+# This terminal implementation can run standalone or imported for assistant.py
 # by Nik Stromberg - nikorasu85@gmail.com - MIT 2022 - copilot
 
 Model = 'small'     # Whisper model size (tiny, base, small, medium, large)
@@ -16,13 +16,13 @@ SampleRate = 44100  # Stream device recording frequency
 BlockSize = 30      # Block size in milliseconds
 Threshold = 0.1     # Minimum volume threshold to activate listening
 Vocals = [50, 1000] # Frequency range to detect sounds that could be speech
-EndBlocks = 35      # Number of blocks to wait before sending to Whisper
+EndBlocks = 40      # Number of blocks to wait before sending to Whisper
 
 class StreamHandler:
     def __init__(self, assist=None):
         if assist == None:  # If not being run by my assistant, just run as terminal transcriber.
             class fakeAsst(): running, talking, analyze = True, False, None
-            self.asst = fakeAsst()
+            self.asst = fakeAsst()  # anyone know a better way to do this?
         else: self.asst = assist
         self.running = True
         self.padding = 0
@@ -35,13 +35,15 @@ class StreamHandler:
     def callback(self, indata, frames, time, status):
         #if status: print(status) # for debugging, prints stream errors.
         if not any(indata):
-            #print("\033[31mNo input or device is muted.\033[0m") #4debugging
-            #self.running = False
+            print('\033[31m.\033[0m', end='', flush=True) # if no input, prints red dots
+            #print("\033[31mNo input or device is muted.\033[0m") #old way
+            #self.running = False  # used to terminate if no input
             return
+        # A few alternative methods exist for detecting speech.. #indata.max() > Threshold
         #zero_crossing_rate = np.sum(np.abs(np.diff(np.sign(indata)))) / (2 * indata.shape[0]) # threshold 20
         freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * SampleRate / frames
         if np.sqrt(np.mean(indata**2)) > Threshold and Vocals[0] <= freq <= Vocals[1] and not self.asst.talking:
-            print('.', end='', flush=True)  #indata.max() instead of np.sqrt(np.mean(indata**2)) may be better
+            print('.', end='', flush=True)
             if self.padding < 1: self.buffer = self.prevblock.copy()
             self.buffer = np.concatenate((self.buffer, indata))
             self.padding = EndBlocks

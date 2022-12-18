@@ -3,9 +3,9 @@ from livewhisper import StreamHandler
 from bs4 import BeautifulSoup
 from subprocess import call
 import wikipedia, requests
-import pyttsx3#, mediactl
-import time, os
-#import webbrowser #wip tbd
+import pyttsx3, mediactl
+import time, os, re
+#import webbrowser #wip might use later
 
 # My simple AI assistant using my LiveWhisper as a base. Can perform simple tasks such as:
 # searching wikipedia, telling the date/time/weather/jokes, basic math and trivia, and more.
@@ -14,12 +14,14 @@ import time, os
 
 AIname = "computer" # Name to call the assistant, such as "computer" or "jarvis". Activates further commands.
 City = ''           # Default city for weather, Google uses + for spaces. (uses IP location if not specified)
+
+# possibly redudant settings, but keeping them for easy debugging, for now.
 Model = 'small'     # Whisper model size (tiny, base, small, medium, large)
 English = True      # Use english-only model?
 Translate = False   # Translate non-english to english?
 SampleRate = 44100  # Stream device recording frequency
 BlockSize = 30      # Block size in milliseconds
-Threshold = 0.2     # Minimum volume threshold to activate listening
+Threshold = 0.1     # Minimum volume threshold to activate listening
 Vocals = [50, 1000] # Frequency range to detect sounds that could be speech
 EndBlocks = 40      # Number of blocks to wait before sending to Whisper
 
@@ -32,18 +34,20 @@ class Assistant:
         self.espeak.setProperty('rate', 180) # speed of speech, 175 is terminal default, 200 is pyttsx3 default
         self.askwiki = False
         self.weatherSave = ['',0]
-        self.ua = 'Mozilla/5.0 (X11; Linux x86_64; rv:106.0) Gecko/20100101 Firefox/106.0'
+        self.ua = 'Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0'
 
-    def analyze(self, input):
-        string = "".join(ch for ch in input if ch not in ",.?!'").lower()  # Removes punctuation
+    def analyze(self, input):  # This is the decision tree for the assistant
+        string = "".join(ch for ch in input if ch not in ",.?!'").lower()  # Removes punctuations Whisper adds
         query = string.split()  # Split into words
-        queried = self.prompted or string[1:].startswith((AIname,"okay "+AIname,"hey "+AIname))#AIname in query
-        if query in ([AIname],["okay",AIname],["hey",AIname]): # if that's all they said, prompt for more input
+        if query in ([AIname],["hey",AIname],["okay",AIname],["ok",AIname]): # if that's all they said, prompt for more input
             self.speak('Yes?')
             self.prompted = True
-        elif self.askwiki or (queried and "wikipedia" in query or "wiki" in query):
-            wikiwords = {"okay","hey",AIname,"do","a","check","wikipedia","search","for","on","what","whats","who","whos","is","was",
-                        "an","does","say","can","you","tell","give","get","me","results","info","information","about","something"} #of
+        if queried := self.prompted or string[1:].startswith((AIname,"hey "+AIname,"okay "+AIname,"ok "+AIname)): #AIname in query
+            query = [word for word in query if word not in {"hey","okay","ok",AIname}] # remake query without AIname prompts
+        if self.askwiki or (queried and "wikipedia" in query or "wiki" in query):
+            wikiwords = {"okay","hey",AIname,"please","could","would","do","a","check","i","need","wikipedia",
+                        "search","for","on","what","whats","who","whos","is","was","an","does","say","can",
+                        "you","tell","give","get","me","results","info","information","about","something","ok"}
             query = [word for word in query if word not in wikiwords] # remake query without wikiwords
             if query == [] and not self.askwiki: # if query is empty after removing wikiwords, ask user for search term
                 self.speak("What would you like to know about?")
@@ -52,11 +56,31 @@ class Assistant:
                 self.speak("No search term given, canceling.")
                 self.askwiki = False
             else:
-                self.getwiki(" ".join(query)) # search wikipedia for query
+                self.speak(self.getwiki(" ".join(query))) # search wikipedia for query
                 self.askwiki = False
             self.prompted = False
-        #elif queried and "open" in query and any(word in query for word in {"google","youtube","reddit","facebook","twitter"}):
-        #    sites = {"google":"google.com","youtube":"youtube.com","reddit":"reddit.com","facebook":"facebook.com","twitter":"twitter.com"}
+        elif queried and re.search(r"(song|title|track|name|playing)+", ' '.join(query)):
+            self.speak(mediactl.status()[0]['title'])
+            self.prompted = False
+        elif queried and re.search(r"(play|pause|unpause|resume)+", ' '.join(query)):
+            mediactl.playpause()
+            self.prompted = False
+        elif queried and "stop" in query:
+            #self.espeak.stop()  #could check .isBusy()
+            mediactl.stop()
+            self.prompted = False
+        elif queried and "next" in query or "forward" in query or "skip" in query:
+            mediactl.next()
+            self.prompted = False
+        elif queried and "previous" in query or "back" in query or "last" in query:
+            mediactl.prev()
+            self.prompted = False
+        elif queried and re.search(r"^(volume (up|louder)|(louder|more) (music|volume)|turn (it|the (music|volume|sound)) up( more)?|turn up the (music|volume|sound)|(increase|raise) the (volume|sound))( more)?$", ' '.join(query)):
+            mediactl.volumeup()
+            self.prompted = False
+        elif queried and re.search(r"^(volume (down|lower)|(lower|less) (music|volume)|turn (it|the (music|volume|sound)) down( more)?|turn down the (music|volume|sound)|(decrease|lower) the (volume|sound))( more)?$", ' '.join(query)):
+            mediactl.volumedown()
+            self.prompted = False
         elif queried and "weather" in query: # get weather for preset {City}. ToDo: allow user to specify city in prompt
             self.speak(self.getweather())
             self.prompted = False
@@ -66,7 +90,7 @@ class Assistant:
         elif queried and "date" in query:
             self.speak(time.strftime(f"Today's date is %B {self.orday()} %Y."))
             self.prompted = False
-        elif queried and ("day" in query or "today" in query) and ("what" in query or "whats" in query):
+        elif queried and "day" in query or "today" in query: # and ("what" in query or "whats" in query): # might need this in a few places
             self.speak(time.strftime(f"It's %A the {self.orday()}."))
             self.prompted = False
         elif queried and "joke" in query or "jokes" in query or "funny" in query:
@@ -79,19 +103,18 @@ class Assistant:
         elif queried and "terminate" in query: # still deciding on best phrase to close the assistant
             self.running = False
             self.speak("Closing Assistant.")
-        elif queried and len(query) > 2:
-            query = [word for word in query if word not in {"okay","hey",AIname}] # remake query without AIname prompts
+        elif queried and len(query) > 2:  # tries to detect anything else, but if user mistakenly said prompt word, ignores
             self.speak(self.getother('+'.join(query)))
             self.prompted = False
 
     def speak(self, text):
-        self.talking = True
+        self.talking = True # if I wanna add stop ability, I think function needs to be it's own object
         print(f"\n\033[92m{text}\033[0m\n")
         self.espeak.say(text) #call(['espeak',text]) #'-v','en-us' #without pytttsx3
         self.espeak.runAndWait()
         self.talking = False
 
-    def getweather(self):
+    def getweather(self) -> str:
         curTime = time.time()
         if curTime - self.weatherSave[1] > 300 or self.weatherSave[1] == 0: # if last weather request was over 5 minutes ago
             try:
@@ -109,19 +132,18 @@ class Assistant:
                 return "I couldn't connect to the weather service."
         return self.weatherSave[0]
 
-    def getwiki(self, text):
+    def getwiki(self, text) -> str:
         try:
             wikisum = wikipedia.summary(text, sentences=2, auto_suggest=False)
             wikipage = wikipedia.page(text, auto_suggest=False) #auto_suggest=False prevents random results
-            self.speak('According to Wikipedia:')
             try:
                 call(['notify-send','Wikipedia',wikipage.url]) #with plyer: notification.notify('Wikipedia',wikipage.url,'Assistant')
             finally:
-                self.speak(wikisum)
+                return 'According to Wikipedia:\n'+wikisum  #self.speak(wikisum)
         except (wikipedia.exceptions.PageError, wikipedia.exceptions.WikipediaException):
-            self.speak("I couldn't find that right now, maybe phrase it differently?")
+            return "I couldn't find that right now, maybe phrase it differently?"
 
-    def getother(self, text):
+    def getother(self, text) -> str:
         try:
             html = requests.get("https://www.google.com/search?q="+text, {'User-Agent':self.ua}).content
             soup = BeautifulSoup(html, 'html.parser')
@@ -131,11 +153,11 @@ class Assistant:
 
     def orday(self) -> str:  # Returns day of the month with Ordinal suffix: 1st, 2nd, 3rd, 4th, etc.
         day = time.strftime("%-d")
-        return day+['','st','nd','rd'][int(day)%10] if int(day)%10 in [1,2,3] and day not in ['11','12','13'] else day+'th'
+        return day+'th' if int(day) in [11,12,13] else day+{1:'st',2:'nd',3:'rd'}.get(int(day)%10,'th')
 
 def main():
     try:
-        AIstant = Assistant()
+        AIstant = Assistant() #voice object before this?
         handler = StreamHandler(AIstant)
         handler.listen()
     except (KeyboardInterrupt, SystemExit): pass

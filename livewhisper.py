@@ -14,13 +14,13 @@ English = True      # Use English-only model?
 Translate = False   # Translate non-English to English?
 SampleRate = 44100  # Stream device recording frequency
 BlockSize = 30      # Block size in milliseconds
-Threshold = 0.2     # Minimum volume threshold to activate listening
+Threshold = 0.1     # Minimum volume threshold to activate listening
 Vocals = [50, 1000] # Frequency range to detect sounds that could be speech
 EndBlocks = 35      # Number of blocks to wait before sending to Whisper
 
 class StreamHandler:
     def __init__(self, assist=None):
-        if assist == None:
+        if assist == None:  # If not being run by my assistant, just run as terminal transcriber.
             class fakeAsst(): running, talking, analyze = True, False, None
             self.asst = fakeAsst()
         else: self.asst = assist
@@ -34,29 +34,30 @@ class StreamHandler:
 
     def callback(self, indata, frames, time, status):
         #if status: print(status) # for debugging, prints stream errors.
-        if any(indata):
-            freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * SampleRate / frames
-            if indata.max() > Threshold and Vocals[0] <= freq <= Vocals[1] and not self.asst.talking:
-                print('.', end='', flush=True)
-                if self.padding < 1: self.buffer = self.prevblock.copy()
-                self.buffer = np.concatenate((self.buffer, indata))
-                self.padding = EndBlocks
-            else:
-                self.padding -= 1
-                if self.padding > 1:
-                    self.buffer = np.concatenate((self.buffer, indata))
-                elif self.padding < 1 < self.buffer.shape[0] > SampleRate:
-                    self.fileready = True
-                    write('dictate.wav', SampleRate, self.buffer) # I'd rather send data to Whisper directly..
-                    self.buffer = np.zeros((0,1))
-                elif self.padding < 1 < self.buffer.shape[0] < SampleRate:
-                    self.buffer = np.zeros((0,1))
-                    print("\033[2K\033[0G", end='', flush=True)
-                else:
-                    self.prevblock = indata.copy() #np.concatenate((self.prevblock[-int(SampleRate/10):], indata)) # SLOW
+        if not any(indata):
+            #print("\033[31mNo input or device is muted.\033[0m") #4debugging
+            #self.running = False
+            return
+        #zero_crossing_rate = np.sum(np.abs(np.diff(np.sign(indata)))) / (2 * indata.shape[0]) # threshold 20
+        freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * SampleRate / frames
+        if np.sqrt(np.mean(indata**2)) > Threshold and Vocals[0] <= freq <= Vocals[1] and not self.asst.talking:
+            print('.', end='', flush=True)  #indata.max() instead of np.sqrt(np.mean(indata**2)) may be better
+            if self.padding < 1: self.buffer = self.prevblock.copy()
+            self.buffer = np.concatenate((self.buffer, indata))
+            self.padding = EndBlocks
         else:
-            print("\033[31mNo input or device is muted.\033[0m")
-            self.running = False
+            self.padding -= 1
+            if self.padding > 1:
+                self.buffer = np.concatenate((self.buffer, indata))
+            elif self.padding < 1 < self.buffer.shape[0] > SampleRate: # if enough silence has passed, write to file.
+                self.fileready = True
+                write('dictate.wav', SampleRate, self.buffer) # I'd rather send data to Whisper directly..
+                self.buffer = np.zeros((0,1))
+            elif self.padding < 1 < self.buffer.shape[0] < SampleRate: # if recording not long enough, reset buffer.
+                self.buffer = np.zeros((0,1))
+                print("\033[2K\033[0G", end='', flush=True)
+            else:
+                self.prevblock = indata.copy() #np.concatenate((self.prevblock[-int(SampleRate/10):], indata)) # SLOW
 
     def process(self):
         if self.fileready:

@@ -28,4 +28,13 @@ Available features: Weather, date & time, tell jokes, & do wikipedia searches.
 It can also handle some other requests, like basic math or real simple trivia.
 Tho that relies on Google's instant-answer snippets & sometimes doesn't work.
 
+Control media-players using: play, pause, next, previous, stop, what's playing?
+Media controls need some form of noise/echo cancelling enabled to work right.
+See [this page](https://www.linuxuprising.com/2020/09/how-to-enable-echo-noise-cancellation.html) for more information on how to enable that in Linux PulseAudio.
+
 You can close the assistant via `ctrl+c`, or by saying it's name & "terminate".
+
+---
+
+If you like my projects and want to help me keep making more,
+please consider donating on [my Ko-fi page](https://ko-fi.com/nik85)! Thanks!

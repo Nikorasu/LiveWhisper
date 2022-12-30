@@ -1,4 +1,4 @@
-## LiveWhisper - Whisper based transcription
+# LiveWhisper - Whisper based transcription
 
 `livewhisper.py` outputs psuedo-live sentence-by-sentence dictation to terminal.
 Using [OpenAI's Whisper](https://github.com/openai/whisper) model, and sounddevice library to listen to microphone.

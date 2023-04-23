@@ -3,10 +3,9 @@ import whisper, os
 import numpy as np
 import sounddevice as sd
 from scipy.io.wavfile import write
+import socket
+import threading
 
-Model = 'tiny'      # Whisper model size (tiny, base, small, medium, large)
-English = True      # Use English-only model?
-Translate = False   # Translate non-English to English?
 SampleRate = 44100  # Stream device recording frequency
 BlockSize = 30      # Block size in milliseconds
 Threshold = 0.1     # Minimum volume threshold to activate listening
@@ -22,19 +21,25 @@ class StreamHandler:
         self.interval = 0
         self.prevblock = self.buffer = np.zeros((0,1))
         self.fileready = False
-        print("\033[96mLoading Whisper Model..\033[0m", end='', flush=True)
-        self.model = whisper.load_model(f'{Model}{".en" if English else ""}')
-        print("\033[90m Done.\033[0m")
 
+    def receive_response(self, sock):
+        while True:
+            # Wait for a response from file 2
+            data = sock.recv(1024)
+
+            # If there is no more data to receive, break out of the loop
+            if not data:
+                break
+
+            # Print the response from file 2 to the screen
+            dpg.set_value("transcripion", data.decode())
+
+        # Close the socket
+        sock.close()
+        
     def callback(self, indata, frames, time, status):
-        #if status: print(status) # for debugging, prints stream errors.
         if not any(indata):
-            print('\033[31m.\033[0m', end='', flush=True) # if no input, prints red dots
-            #print("\033[31mNo input or device is muted.\033[0m") #old wayk
-            #self.running = False  # used to terminate if no input
             return
-        # A few alternative methods exist for detecting speech.. #indata.max() > Threshold
-        #zero_crossing_rate = np.sum(np.abs(np.diff(np.sign(indata)))) / (2 * indata.shape[0]) # threshold 20
         freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * SampleRate / frames
 
         #Update GUI
@@ -49,8 +54,8 @@ class StreamHandler:
         dpg.set_value("progress-bar", new_value)
 
         # Check if sound in threshold
-        if np.sqrt(np.mean(indata**2)) > Threshold and Vocals[0] <= freq <= Vocals[1]:
-            print('.', end='', flush=True)
+        if np.sqrt(np.mean(indata**2)) > Threshold and Vocals[0] <= freq <= Vocals[1]:           
+            # If this is not the first block in the sequence
             if self.padding < 1: 
                 self.buffer = self.prevblock.copy()
             self.buffer = np.concatenate((self.buffer, indata))
@@ -74,29 +79,41 @@ class StreamHandler:
                 write('dictate.wav', SampleRate, self.buffer) 
                 self.buffer = np.zeros((0,1))
                 dpg.set_value("status","Silence")
-            elif self.padding < 1 < self.buffer.shape[0] < SampleRate: # if recording not long enough, reset buffer.
+            # if recording not long enough, reset buffer.
+            elif self.padding < 1 < self.buffer.shape[0] < SampleRate: 
                 self.buffer = np.zeros((0,1))
                 print("\033[2K\033[0G", end='', flush=True)
                 dpg.set_value("status","Silence")
             else:
-                self.prevblock = indata.copy() #np.concatenate((self.prevblock[-int(SampleRate/10):], indata)) # SLOW
+                self.prevblock = indata.copy() 
                 dpg.set_value("status","Silence")
 
-    def process(self):
+    def process(self, sock):
         dpg.render_dearpygui_frame()
         if self.fileready:
-            print("\n\033[90mTranscribing..\033[0m")
-            result = self.model.transcribe('dictate.wav',fp16=False,language='en' if English else '',task='translate' if Translate else 'transcribe')
-            print(f"\033[1A\033[2K\033[0G{result['text']}")
-            dpg.set_value("transcripion", result['text'])
             self.fileready = False
+            #print("\n\033[90mTranscribing..\033[0m")
+            message = 'send_hello_world'
+            sock.sendall(message.encode())
 
     def listen(self):
+        # Create a socket object
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        # Connect the socket to the port where file 2 is listening
+        server_address = ('localhost', 9999)
+        sock.connect(server_address)
+
+        # Create a thread to receive responses from file 2
+        receive_thread = threading.Thread(target=self.receive_response, args=(sock,))
+        receive_thread.start()
+
         print("\033[32mListening.. \033[37m(Ctrl+C to Quit)\033[0m")
         with sd.InputStream(channels=1, callback=self.callback, blocksize=int(SampleRate * BlockSize / 1000), samplerate=SampleRate):
             while dpg.is_dearpygui_running():
-                self.process()
+                self.process(sock)
 
+#GUI Code
 dpg.create_context()
 
 with dpg.window(label="Live Whisper", tag="Primary Window"):
@@ -108,6 +125,7 @@ with dpg.window(label="Live Whisper", tag="Primary Window"):
     dpg.add_text("", tag="test")
     dpg.add_text("", tag="test2")
     dpg.add_text(SampleRate, tag="test3")
+    dpg.add_button(label="Clear Text")
 
 dpg.create_viewport()
 dpg.setup_dearpygui()

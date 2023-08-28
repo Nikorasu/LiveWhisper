@@ -1,18 +1,62 @@
 # LiveWhisper - Whisper based transcription
 
+## Installation
+
+### Linux
+
+  ```bash
+pip install -r requirements.txt
+```
+
+### Windows (from PowerShell)
+
+  ```powershell
+& $(where.exe python).split()[0] -m pip install -r requirements.txt
+```
+
+## Usage
+### LiveWhisper
+
+```
+Usage: livewhisper.py [OPTIONS]
+
+Options:
+  -d, --debug-level [CRITICAL|ERROR|WARNING|INFO|DEBUG|NOTSET]
+                                  Set the debug level for the standard output.
+  -l, --log-file TEXT             File to store all debug messages.
+  -m, --model [tiny|base|small|medium|large]
+                                  Whisper model size
+  -L, --language [en|zh|de|es|ru|ko|fr|ja|pt|tr|pl|ca|nl|ar|sv|it|id|hi|fi|vi|iw|uk|el|ms|cs|ro|da|hu|ta|no|th|ur|hr|bg|lt|la|mi|ml|cy|sk|te|fa|lv|bn|sr|az|sl|kn|et|mk|br|eu|is|hy|ne|mn|bs|kk|sq|sw|gl|mr|pa|si|km|sn|yo|so|af|oc|ka|be|tg|sd|gu|am|yi|lo|uz|fo|ht|ps|tk|nn|mt|sa|lb|my|bo|tl|mg|as|tt|haw|ln|ha|ba|jw|su]
+                                  Language to translate from. Empty to
+                                  autodetect.
+  -t, --translate BOOLEAN         Translate to English
+  -s, --sample-rate INTEGER       Stream device recording frequency
+  -b, --block-size INTEGER        Block size in milliseconds
+  -T, --threshold FLOAT           Minimum volume threshold to activate
+                                  listening
+  -v, --vocals-min INTEGER        Minimun value of frequency range to detect
+                                  sounds that could be speech
+  -V, --vocals-max INTEGER        Frequency range to detect sounds that could
+                                  be speech
+  -e, --end-blocks INTEGER        Number of blocks to wait before sending to
+                                  Whisper
+  --config FILE                   Read configuration from FILE.
+  --help                          Show this message and exit.
+```
+
 `livewhisper.py` outputs psuedo-live sentence-by-sentence dictation to terminal.
 Using [OpenAI's Whisper](https://github.com/openai/whisper) model, and sounddevice library to listen to microphone.
 Audio from mic is stored if it hits a volume & frequency threshold, then when
 silence is detected, it saves the audio to a temp file and sends it to Whisper.
 
-*Dependencies:* Whisper, numpy, scipy, sounddevice
+*Dependencies:* Whisper, numpy, scipy, sounddevice (but see requirements.txt)
 
 LiveWhisper can somewhat work as an alternative to [SpeechRecognition](https://github.com/Uberi/speech_recognition).
 Although that now has it's own Whisper support, so it's up to you. ;)
 
 ---
 
-## Whisper Assistant
+### Whisper Assistant
 
 I've also included `assistant.py`, which using livewhisper as a base, is my
 attempt at making a simple voice-command assistant like Siri, Alexa, or Jarvis.

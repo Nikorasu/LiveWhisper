@@ -1,6 +1,6 @@
 # LiveWhisper - Whisper based transcription
 
-`livewhisper.py` outputs psuedo-live sentence-by-sentence dictation to terminal.
+`livewhisper.py` outputs pseudo-live sentence-by-sentence dictation to terminal.
 Using [OpenAI's Whisper](https://github.com/openai/whisper) model, and sounddevice library to listen to microphone.
 Audio from mic is stored if it hits a volume & frequency threshold, then when
 silence is detected, it saves the audio to a temp file and sends it to Whisper.
@@ -8,7 +8,7 @@ silence is detected, it saves the audio to a temp file and sends it to Whisper.
 *Dependencies:* Whisper, numpy, scipy, sounddevice
 
 LiveWhisper can somewhat work as an alternative to [SpeechRecognition](https://github.com/Uberi/speech_recognition).
-Although that now has it's own Whisper support, so it's up to you. ;)
+Although that now has its own Whisper support, so it's up to you. ;)
 
 ---
 
@@ -20,7 +20,7 @@ attempt at making a simple voice-command assistant like Siri, Alexa, or Jarvis.
 Same dependencies as livewhisper, as well as requests, pyttsx3, wikipedia, bs4.
 *Also needs:* espeak and python3-espeak.
 
-The voice assistant can be activated by saying it's name, default "computer",
+The voice assistant can be activated by saying its name, default "computer",
 "hey computer" or "okay computer" also work. You can wait for the computer to
 then respond, or immediately request an action/question without pausing.
 
@@ -32,7 +32,7 @@ Control media-players using: play, pause, next, previous, stop, what's playing?
 Media controls need some form of noise/echo cancelling enabled to work right.
 See [this page](https://www.linuxuprising.com/2020/09/how-to-enable-echo-noise-cancellation.html) for more information on how to enable that in Linux PulseAudio.
 
-You can close the assistant via `ctrl+c`, or by saying it's name & "terminate".
+You can close the assistant via <kbd>ctrl</kbd>+<kbd>c</kbd>, or by saying its name & "terminate".
 
 ---
 
